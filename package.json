@@ -1,0 +1,52 @@
+{
+  "name": "HornyLink",
+  "version": "1.5.1",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "powershell -NoLogo -NoProfile -Command \"chcp 65001; electron .\"",
+    "start:prod": "cd app-obfuscated && npx electron .",
+    "obfuscate": "node obfuscate.js",
+    "pack": "npm run obfuscate && npx electron-packager ./app-obfuscated HornyLink --icon=icon.ico --platform=win32 --arch=x64 --overwrite --out=build --asar",
+    "build": "npm run pack"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "javascript-obfuscator": "^4.1.1"
+  },
+  "build": {
+    "asar": true,
+    "directories": {
+      "output": "build"
+    },
+    "appId": "com.waifnet.hornyLink",
+    "win": {
+      "icon": "icon.ico",
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    }
+  },
+  "dependencies": {
+    "adm-zip": "^0.5.16",
+    "axios": "^1.13.2",
+    "bcrypt": "^5.1.1",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-session": "^1.18.1",
+    "extract-zip": "^2.0.1",
+    "form-data": "^4.0.2",
+    "fs-extra": "^11.3.0",
+    "iconv-lite": "^0.6.3",
+    "multer": "^1.4.5-lts.2",
+    "node-fetch": "^3.3.2",
+    "sqlite3": "^5.1.7",
+    "unzipper": "^0.12.3",
+    "validator": "^13.15.0"
+  }
+}

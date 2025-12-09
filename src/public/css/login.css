@@ -1,0 +1,357 @@
+
+/* Общие стили и сброс */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', sans-serif;
+  background-color: var(--bg-page);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  position: relative;
+}
+
+/* Переключатель языка */
+.language-selector {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  z-index: 1000;
+}
+
+.language-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--transition-normal);
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.language-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.language-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 5px;
+  background: rgba(27, 30, 36, 0.95);
+  border: 1px solid var(--border-primary);
+  border-radius: var(--border-radius);
+  overflow: hidden;
+  min-width: 120px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: all var(--transition-normal);
+  backdrop-filter: var(--backdrop-blur);
+}
+
+.language-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.language-option {
+  display: block;
+  width: 100%;
+  padding: 10px 15px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  font-size: 14px;
+}
+
+.language-option:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.language-option.active {
+  background: rgba(74, 140, 255, 0.3);
+  color: var(--accent-blue);
+}
+
+/* Основной контейнер */
+.container {
+  background-color: var(--bg-container);
+  padding: var(--spacing-xl);
+  border-radius: var(--border-radius-large);
+  box-shadow: var(--shadow-container);
+  width: 100%;
+  max-width: var(--width-container);
+}
+
+/* Переключение между формами */
+.form-toggle {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-toggle button {
+  flex: 1;
+  margin-top: var(--spacing-xs);
+  background: var(--bg-button-secondary);
+  border: none;
+  padding: var(--spacing-sm);
+  color: var(--text-primary);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  transition: background var(--transition-normal);
+}
+
+.form-toggle button:hover {
+  background: var(--bg-input-focus);
+}
+
+/* Кнопка сброса пароля */
+.reset-button {
+  flex: 1;
+  margin-top: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+  background: var(--accent-primary);
+  border: none;
+  padding: var(--spacing-sm);
+  color: var(--text-primary);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  width: 100%;
+  transition: background var(--transition-normal);
+}
+
+.reset-button:hover {
+  background: var(--accent-primary-active);
+}
+
+/* Формы */
+.form {
+  display: none;
+  flex-direction: column;
+}
+
+.form.active {
+  display: flex;
+}
+
+.form h2 {
+  margin-bottom: var(--spacing-md);
+  font-weight: 400;
+  text-align: center;
+}
+
+/* Группы ввода */
+.input-group {
+  position: relative;
+  margin-bottom: var(--spacing-md);
+  width: 100%;
+}
+
+.input-group input {
+  width: 100%;
+  padding: var(--spacing-sm) 2.5rem var(--spacing-sm) var(--spacing-sm);
+  border: none;
+  border-radius: var(--border-radius);
+  background-color: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 1rem;
+  display: block;
+}
+
+.input-group input:focus {
+  outline: none;
+  background-color: var(--bg-input-focus);
+}
+
+/* Иконка глаза для пароля */
+.eye-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1.2rem;
+  cursor: pointer;
+  user-select: none;
+  color: var(--text-secondary);
+  transition: color var(--transition-fast);
+  z-index: 2;
+}
+
+.eye-icon:hover {
+  color: var(--text-primary);
+}
+
+/* Кнопка отправки формы */
+.form button[type="submit"] {
+  background-color: var(--accent-primary);
+  border: none;
+  padding: var(--spacing-sm);
+  border-radius: var(--border-radius);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-weight: bold;
+  transition: background var(--transition-normal);
+}
+
+.form button[type="submit"]:hover {
+  background-color: var(--accent-primary-hover);
+}
+
+/* Сообщения об ошибках */
+.message {
+  margin-top: var(--spacing-xs);
+  font-size: 0.9rem;
+  color: var(--text-error);
+}
+
+/* Блок подтверждения Telegram */
+.tg-confirm-block {
+  background: var(--bg-telegram-block);
+  border-radius: var(--border-radius-xl);
+  box-shadow: var(--shadow-telegram);
+  padding: 20px 24px;
+  color: #e8eef6;
+  margin-top: var(--spacing-md);
+  font-size: 1.1em;
+}
+
+.tg-confirm-block h3 {
+  margin-top: 0;
+  margin-bottom: 10px;
+  color: var(--accent-blue);
+  font-weight: bold;
+}
+
+.tg-confirm-block ol {
+  margin: 0 0 8px 20px;
+  padding: 0;
+}
+
+.copy-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px 0;
+}
+
+.copy-key {
+  font-family: "Consolas", "Monaco", monospace;
+  font-size: 1.18em;
+  color: var(--accent-code);
+  padding: 2px 10px;
+  background: #181f2e;
+  border-radius: var(--border-radius);
+  letter-spacing: 1px;
+  user-select: all;
+  max-width: 180px;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  overflow: hidden;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.copy-btn {
+  background: #232943;
+  border: none;
+  color: var(--accent-blue);
+  border-radius: var(--border-radius);
+  cursor: pointer;
+  font-size: 1.15em;
+  padding: 2px 12px;
+  transition: background var(--transition-smooth), color var(--transition-smooth);
+}
+
+.copy-btn:hover {
+  background: #3a4672;
+  color: var(--accent-green);
+}
+
+.copy-status {
+  font-size: 0.98em;
+  min-height: 16px;
+  margin-left: 2px;
+  margin-top: 4px;
+}
+
+/* Модальное окно сброса пароля */
+.reset-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--bg-page);
+  backdrop-filter: var(--backdrop-blur-light);
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+}
+
+.reset-modal.show {
+  display: flex;
+}
+
+.reset-modal-content {
+  background: var(--bg-container);
+  padding: var(--spacing-xxl);
+  border-radius: var(--border-radius-medium);
+  width: 90%;
+  max-width: var(--width-max-modal);
+  box-shadow: var(--shadow-modal);
+}
+
+.reset-modal-content h3 {
+  margin-top: 0;
+}
+
+.reset-status {
+  color: #ccc;
+  margin-top: 10px;
+  min-height: 20px;
+}
+
+.reset-cancel {
+  text-align: center;
+  margin-top: 14px;
+}
+
+.reset-cancel a {
+  color: var(--text-secondary);
+  text-decoration: underline;
+}
+
+.reset-cancel a:hover {
+  color: var(--text-link);
+}
+
+/* Ссылка "Забыли пароль?" */
+.show-reset-container {
+  margin-top: var(--spacing-xs);
+  text-align: center;
+}
+
+.show-reset-link {
+  color: var(--text-link);
+  text-decoration: underline;
+}
+
+.show-reset-link:hover {
+  color: var(--text-link-hover);
+}

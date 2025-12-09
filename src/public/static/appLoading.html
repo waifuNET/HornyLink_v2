@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title data-i18n="loading_ui.LOADING"></title>
+  <style>
+    html{
+        overflow: hidden;
+    }
+    body {
+      margin: 0;
+      font-family: Inter, sans-serif;
+      background: rgba(25, 25, 25, 0);
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+    }
+
+    .box {
+      padding: 20px 30px;
+      text-align: center;
+    }
+
+    .bar {
+      width: 100%;
+      background: #333;
+      height: 8px;
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+
+    .bar-fill {
+      background: #00c3ff;
+      width: 0%;
+      height: 100%;
+      animation: load 2s ease-in-out infinite;
+    }
+
+    #loadingText{
+        margin-top: 0px;
+    }
+
+    @keyframes load {
+      0% { width: 0%; }
+      50% { width: 80%; }
+      100% { width: 0%; }
+    }
+
+    .message {
+      margin-top: 10px;
+      font-size: 14px;
+      opacity: 0.75;
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2 id="loadingText" data-i18n="loading_ui.LOADING_HORNYLINK"></h2>
+    <div class="bar"><div class="bar-fill"></div></div>
+    <div class="message" id="status" data-i18n="loading_ui.INITIALIZING"></div>
+  </div>
+</body>
+</html>
+
+<script src="../scripts/modules/staticTranslations.js"></script>

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="no_internet.TITLE">Нет подключения</title>
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/static.css">
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .error-container {
+      text-align: center;
+      max-width: 450px;
+    }
+    .error-icon {
+      font-size: 5rem;
+      margin-bottom: 1.5rem;
+      opacity: 0.8;
+    }
+    .wifi-icon {
+      position: relative;
+      display: inline-block;
+    }
+    .wifi-icon::after {
+      content: "✕";
+      position: absolute;
+      right: -10px;
+      bottom: 0;
+      font-size: 2rem;
+      color: var(--danger);
+    }
+    .error-title {
+      font-size: 1.75rem;
+      font-weight: 600;
+      margin-bottom: 0.75rem;
+    }
+    .error-description {
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .error-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .troubleshoot-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.5rem;
+      margin-top: 2rem;
+      text-align: left;
+    }
+    .troubleshoot-title {
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .troubleshoot-list {
+      list-style: none;
+    }
+    .troubleshoot-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+    }
+    .troubleshoot-item:last-child {
+      border-bottom: none;
+    }
+    .troubleshoot-icon {
+      font-size: 1.1rem;
+      margin-top: 0.1rem;
+    }
+    .connection-status {
+      background: var(--bg-secondary);
+      border-radius: 12px;
+      padding: 1rem;
+      margin-top: 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--danger);
+      animation: blink 1.5s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+    .cached-content {
+      margin-top: 2rem;
+      padding-top: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
+    .cached-title {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 1rem;
+    }
+    .cached-links {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .cached-link {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.75rem 1rem;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      color: var(--text-primary);
+      text-decoration: none;
+      font-size: 0.9rem;
+      transition: background 0.3s;
+    }
+    .cached-link:hover {
+      background: rgba(99, 102, 241, 0.2);
+    }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <div class="error-container">
+      <div class="error-icon">
+        <span class="wifi-icon">📡</span>
+      </div>
+      <h1 class="error-title" data-i18n="no_internet.NO_INTERNET">Нет подключения к интернету</h1>
+      <p class="error-description" data-i18n="no_internet.DESCRIPTION">
+        Не удаётся установить соединение с сервером. 
+        Проверьте подключение к сети и попробуйте снова.
+      </p>
+    </div>
+  </div>
+
+  <script src="../scripts/modules/staticTranslations.js"></script>
+</body>
+</html>

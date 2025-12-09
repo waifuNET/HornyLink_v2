@@ -1,0 +1,57 @@
+{
+    "language": "English",
+    "loading_ui":{
+        "LOADING": "Loading",
+        "LOADING_HORNYLINK": "🚀 Loading HornyLink...",
+        "INITIALIZING": "Initializing..."
+    },
+    "login_ui":{
+        "AUTH_TITLE": "Authorization / Registration",
+        "LOGIN": "Login",
+        "USERNAME": "Username",
+        "PASSWORD": "Password",
+        "LOGIN_BUTTON": "Login",
+        "REGISTER": "Registration",
+        "FORGOT_PASSWORD": "Forgot password?",
+        "PASSWORD_RECOVERY": "🔐 Password recovery",
+        "SEND_CODE": "Send code",
+        "RECOVERY_KEY": "Recovery key",
+        "NEW_PASSWORD": "New password",
+        "CHANGE_PASSWORD": "Change password",
+        "CANSEL": "Cancel",
+        "EMAIL": "Email",
+        "CONFIRM_PASSWORD": "Confirm password",
+        "REGISTER_BUTTON": "Register"
+    },
+    "errors":{
+        "ENCRYPTION_ERROR": "Encryption error.",
+        "DECRYPTION_ERROR": "Decryption error.",
+        "SETTINGS_LOAD_ERROR": "Error loading settings.",
+        "SETTINGS_SAVE_ERROR": "Error saving settings.",
+        "AUTH_LOW_DATA": "Insufficient data for authentication.",
+        "AUTH_OFFLINE_MODE": "No internet connection. Offline mode.",
+        "AUTH_NETWORK_ERROR": "Network error during authentication.",
+        "AUTH_INVALID_COOKIE": "Invalid cookie.",
+        "AUTH_ERROR": "Authentication error.",
+        "AUTH_CHECK_FAILED": "Authentication check failed.",
+        "AUTH_UNEXPECTED_SERVER_RESPONSE": "Unexpected server response during authentication.",
+        "AUTH_NO_COOKIE": "Cookie missing. User not authenticated.",
+        "AUTH_INCORRECT_SERVER_RESPONSE": "Incorrect server response during authentication.",
+        "AUTH_SERVER_ERROR": "Server error during authentication.",
+        "AUTH_DATA_LOAD_ERROR": "Error loading authentication data.",
+        "AUTH_DATA_SAVE_ERROR": "Error saving authentication data.",
+        "SETTINGS_UPDATE_ERROR": "Error updating settings.",
+        "SINGLE_INSTANCE_LOCK": "Application already running. Terminating second instance.",
+        "SINGLE_INSTANCE_ATTEMPT": "Attempt to launch a second instance of the application.",
+        "DEVTOOLS_CLOSED": "DevTools were closed for security reasons.",
+        "APP_LOADING_CANCELLED": "Application loading was cancelled by user."
+    },
+    "success":{
+        "SETTINGS_LOADED": "Settings loaded successfully.",
+        "AUTH_DATA_SAVED": "Authentication data saved successfully."
+    },
+    "application":{
+        "TRAY_OPEN": "Open",
+        "TRAY_CLOSE": "Close"
+    }
+}

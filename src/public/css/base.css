@@ -1,0 +1,57 @@
+:root {
+  /* Цвета фона */
+  --bg-page: #0f1115;
+  --bg-container: #1b1e24;
+  --bg-input: #2a2d35;
+  --bg-input-focus: #353943;
+  --bg-telegram-block: #1d2230;
+  --bg-button-secondary: #2a2d35;
+  
+  /* Акцентные цвета */
+  --accent-primary: #4f5af0;
+  --accent-primary-hover: #6972f8;
+  --accent-primary-active: #3d49ec;
+  --accent-blue: #4a8cff;
+  --accent-green: #65f69d;
+  --accent-code: #4bd865;
+  
+  /* Цвета текста */
+  --text-primary: #ffffff;
+  --text-secondary: #aaaaaa;
+  --text-error: #ff8888;
+  --text-link: var(--accent-blue);
+  --text-link-hover: var(--accent-green);
+  
+  /* Цвета границ */
+  --border-primary: rgba(255, 255, 255, 0.2);
+  --border-radius: 8px;
+  --border-radius-medium: 12px;
+  --border-radius-large: 16px;
+  --border-radius-xl: 18px;
+  
+  /* Отступы и размеры */
+  --spacing-xs: 0.5rem;
+  --spacing-sm: 0.75rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-xxl: 30px;
+  
+  /* Ширины */
+  --width-container: 400px;
+  --width-max-modal: 400px;
+  
+  /* Тени */
+  --shadow-container: 0 0 30px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 0 20px #000;
+  --shadow-telegram: 0 4px 32px #0005;
+  
+  /* Транзиции */
+  --transition-fast: 0.2s ease;
+  --transition-normal: 0.3s ease;
+  --transition-smooth: 0.18s;
+  
+  /* Эффекты */
+  --backdrop-blur: blur(10px);
+  --backdrop-blur-light: blur(5px);
+}

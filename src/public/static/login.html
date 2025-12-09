@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title data-i18n="login_ui.AUTH_TITLE">Авторизация / Регистрация</title>
+  <link href="../css/base.css" rel="stylesheet" />
+  <link href="../css/login.css" rel="stylesheet" />
+</head>
+<body>
+  <div class="language-selector">
+    <button id="languageToggle" class="language-btn">🌐 RU</button>
+    <div id="languageMenu" class="language-menu">
+      <!-- Языки будут добавлены автоматически -->
+    </div>
+  </div>
+
+  <div class="container">
+
+    <form id="login-form" class="form active">
+      <h2 data-i18n="login_ui.LOGIN">Вход</h2>
+      <div class="input-group">
+        <input type="text" id="login_username" name="username" placeholder="Имя пользователя" data-i18n="login_ui.USERNAME" required />
+      </div>
+      <div class="input-group">
+        <input type="password" id="login_password" name="password" placeholder="Пароль" data-i18n="login_ui.PASSWORD" required />
+        <span class="eye-icon" data-target="login_password">🙈</span>
+      </div>
+      <button type="submit" data-i18n="login_ui.LOGIN_BUTTON">Войти</button>
+      <div id="login-message" class="message"></div>
+      <div class="form-toggle">
+        <button type="button" id="show-register" data-i18n="login_ui.REGISTER">Регистрация</button>
+      </div>
+      <div class="show-reset-container">
+        <a href="#" id="show-reset" class="show-reset-link" data-i18n="login_ui.FORGOT_PASSWORD">Забыли пароль?</a>
+      </div>
+    </form>
+
+    <div id="reset-modal" class="reset-modal">
+      <div class="reset-modal-content">
+        <h3 data-i18n="login_ui.PASSWORD_RECOVERY">🔐 Восстановление пароля</h3>
+
+        <div class="input-group">
+          <input type="text" id="reset-username" placeholder="Имя пользователя" data-i18n="login_ui.USERNAME" />
+        </div>
+        <button id="reset-send-btn" class="reset-button" data-i18n="login_ui.SEND_CODE">Отправить код</button>
+
+        <div class="input-group">
+          <input type="text" id="reset-key" placeholder="Ключ восстановления" data-i18n="login_ui.RECOVERY_KEY" />
+        </div>
+        <div class="input-group">
+          <input type="password" id="reset-password" placeholder="Новый пароль" data-i18n="login_ui.NEW_PASSWORD" />
+          <span class="eye-icon" data-target="reset-password">🙈</span>
+        </div>
+        <button class="reset-button" id="reset-confirm-btn" data-i18n="login_ui.CHANGE_PASSWORD">Сменить пароль</button>
+
+        <div id="reset-status" class="reset-status"></div>
+        <div class="reset-cancel">
+          <a href="#" id="reset-cancel" data-i18n="login_ui.CANSEL">Отмена</a>
+        </div>
+      </div>
+    </div>
+
+    <form id="register-form" class="form">
+      <h2 data-i18n="login_ui.REGISTER">Регистрация</h2>
+      <div class="input-group">
+        <input type="email" id="register-email" name="email" placeholder="Электронная почта" data-i18n="login_ui.EMAIL" required />
+      </div>
+      <div class="input-group">
+        <input type="text" id="register-username" name="username" placeholder="Имя пользователя" data-i18n="login_ui.USERNAME" required />
+      </div>
+      <div class="input-group">
+        <input type="password" id="register-password" name="password" placeholder="Пароль" data-i18n="login_ui.PASSWORD" required />
+        <span class="eye-icon" data-target="register-password">🙈</span>
+      </div>
+      <div class="input-group">
+        <input type="password" id="register-confirm" name="confirm-password" placeholder="Повторите пароль" data-i18n="login_ui.CONFIRM_PASSWORD" required />
+        <span class="eye-icon" data-target="register-confirm">🙈</span>
+      </div>
+      <button type="submit" data-i18n="login_ui.REGISTER_BUTTON">Зарегистрироваться</button>
+      <div id="register-message" class="message"></div>
+      <div class="form-toggle">
+        <button type="button" id="show-login" data-i18n="login_ui.LOGIN">Вход</button>
+      </div>
+    </form>
+
+  </div>
+
+  <script>
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+    const showLoginBtn = document.getElementById('show-login');
+    const showRegisterBtn = document.getElementById('show-register');
+
+    showLoginBtn.addEventListener('click', () => {
+      loginForm.classList.add('active');
+      registerForm.classList.remove('active');
+    });
+
+    showRegisterBtn.addEventListener('click', () => {
+      registerForm.classList.add('active');
+      loginForm.classList.remove('active');
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const username = document.getElementById('login_username').value.trim();
+      const password = document.getElementById('login_password').value.trim();
+      const msg = document.getElementById('login-message');
+
+      msg.textContent = '...';
+
+      try {
+        const result = await window.electronAPI.tryAuth(username, password);
+        console.log("Auth result:", result);
+
+        if (result.success) {
+          msg.textContent = await window.t("login_ui.SUCCESS_LOGIN");
+          msg.style.color = 'lime';
+          return;
+        }
+
+        let reason = await normalizeError(result.reason || '');
+
+        msg.textContent = reason;
+        msg.style.color = 'red';
+
+      } catch (err) {
+        console.error("Login error:", err);
+        msg.textContent = await window.t("login_ui.ERROR_REQUEST");
+        msg.style.color = 'red';
+      }
+    });
+
+    async function normalizeError(text) {
+      if (!text) return await window.t("login_ui.ERROR_REQUEST");
+
+      // Ошибка: отсутствуют данные
+      if (text.includes('Недостаточно данных')) {
+        return await window.t("login_ui.ENTER_LOGIN_AND_PASSWORD");
+      }
+
+      // Ошибка неверного логина/пароля
+      if (text.includes('Неверное имя пользователя') || text.includes('401')) {
+        return await window.t("login_ui.ERROR_LOGIN_OR_PASSWORD");
+      }
+
+      // Любая другая серверная ошибка
+      if (text.includes('Ошибка сервера')) {
+        return await window.t("login_ui.ERROR_LOGIN_OR_PASSWORD");
+      }
+
+      return text;
+    }
+
+    registerForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      let cfg = await window.electronAPI.getCfg();
+
+      const email = document.getElementById('register-email').value;
+      const username = document.getElementById('register-username').value;
+      const password = document.getElementById('register-password').value;
+      const confirm = document.getElementById('register-confirm').value;
+
+      if (password !== confirm) {
+        document.getElementById('register-message').textContent = await window.t('login_ui.PASSWORDS_NOT_MATH');
+        return;
+      }
+
+      const res = await window.electronAPI.tgPreRegister({ email, username, password });
+
+      if (!res.success) {
+        document.getElementById('register-message').textContent = res.error || await window.t('login_ui.REGISTRATION_ERROR');
+        return;
+      }
+
+    document.getElementById('register-message').innerHTML = `
+      <div class="tg-confirm-block">
+        <h3>${await window.t('login_ui.complete_registration')}</h3>
+        <ol>
+          <li>${await window.t('login_ui.OPEN')} <a href="https://t.me/${cfg.telegramBotName_clear}?start=${res.key}" target="_blank" style="color:#4a8cff;text-decoration:underline;font-weight:bold;">${await window.t('login_ui.TELEGRAM_BOT')}</a></li>
+          <li>
+            ${await window.t('login_ui.COPY_KEY')}:
+            <div class="copy-row">
+              <span class="copy-key" id="copy-key">${res.key}</span>
+              <button type="button" class="copy-btn" id="copy-btn" title="${await window.t('login_ui.COPY')}">📋</button>
+            </div>
+          </li>
+          <li>${await window.t('login_ui.SEND_KEY')}</li>
+          <li>${await window.t('login_ui.AFTER_CONFIRMATION')}</li>
+        </ol>
+        <div id="copy-status" class="copy-status"></div>
+      </div>
+    `;
+
+    document.getElementById('copy-btn').onclick = async function() {
+      const key = document.getElementById('copy-key').textContent;
+      await navigator.clipboard.writeText(key).then(async () => {
+        const status = document.getElementById('copy-status');
+        status.textContent = await window.t('login_ui.COPIED');
+        status.style.color = '#4bd865';
+        setTimeout(() => status.textContent = '', 1800);
+      });
+    };
+    });
+
+    document.querySelectorAll('.eye-icon').forEach(icon => {
+      icon.addEventListener('click', () => {
+        const input = document.getElementById(icon.dataset.target);
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        icon.textContent = isHidden ? '👁️' : '🙈';
+      });
+    });
+
+    // Показ модального окна
+    document.getElementById('show-reset').onclick = () => {
+      document.getElementById('reset-modal').classList.add('show');
+      document.getElementById('reset-status').textContent = '';
+    };
+
+    // Отмена
+    document.getElementById('reset-cancel').onclick = (e) => {
+      e.preventDefault();
+      document.getElementById('reset-modal').classList.remove('show');
+      document.getElementById('reset-status').textContent = '';
+    };
+
+    // Отправка кода
+    document.getElementById('reset-send-btn').onclick = async () => {
+      const username = document.getElementById('reset-username').value.trim();
+      const status = document.getElementById('reset-status');
+      status.textContent = '';
+
+      if (!username) {
+        status.textContent = await window.t('login_ui.ENTER_USERNAME');
+        status.style.color = '#e86';
+        return;
+      }
+
+      const cfg = await window.electronAPI.getCfg();
+
+      const res = await fetch(`${cfg.SERVER_URL}/auth/tg/request-password-reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username })
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        status.textContent = await window.t('login_ui.KEY_SENDED');
+        status.style.color = '#4bd865';
+      } else {
+        status.textContent = data.error || await window.t('login_ui.SEND_CODE_ERROR');
+        status.style.color = '#e86';
+      }
+    };
+
+    // Подтверждение сброса пароля
+    document.getElementById('reset-confirm-btn').onclick = async () => {
+      const key = document.getElementById('reset-key').value.trim();
+      const newPass = document.getElementById('reset-password').value.trim();
+      const status = document.getElementById('reset-status');
+
+      if (key.length < 8 || newPass.length < 6) {
+        status.textContent = await window.t('login_ui.ERROR_KEY');
+        status.style.color = '#e86';
+        return;
+      }
+
+      const result = await window.electronAPI.tgResetPassword({ key, new_password: newPass });
+
+      if (result.success) {
+        status.textContent = await window.t('login_ui.PASSWORD_RESET_SUCCESS');
+        status.style.color = '#4bd865';
+        setTimeout(() => {
+          document.getElementById('reset-modal').classList.remove('show');
+        }, 2000);
+      } else {
+        status.textContent = result.error || await window.t('login_ui.PASSWORD_RESET_ERROR');
+        status.style.color = '#e86';
+      }
+    };
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        const languages = await window.electronAPI.getAllLanguages();
+        let currentLang = await window.electronAPI.getCurrentLanguage();
+        
+        const languageToggle = document.getElementById('languageToggle');
+        const languageMenu = document.getElementById('languageMenu');
+        
+        async function updateLanguageDisplay() {
+          currentLang = await window.electronAPI.getCurrentLanguage();
+          languageToggle.textContent = `🌐 ${currentLang.toUpperCase()}`;
+        }
+        
+        async function createLanguageMenu() {
+            languageMenu.innerHTML = '';
+            
+            languages.forEach(({ code, name }) => {
+            const option = document.createElement('button');
+            option.className = 'language-option';
+            option.textContent = `${name} (${code.toUpperCase()})`;
+            option.dataset.lang = code;
+            
+            if (code === currentLang) {
+                option.classList.add('active');
+            }
+            
+            option.addEventListener('click', async () => {
+                if (code !== currentLang) {
+                await window.electronAPI.changeLanguage(code);
+                await updateLanguageDisplay();
+                await createLanguageMenu();
+
+                window.i18nReload();
+                }
+                languageMenu.classList.remove('show');
+            });
+            
+            languageMenu.appendChild(option);
+            });
+        }
+        
+        // Обработчик клика на кнопку языка
+        languageToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            languageMenu.classList.toggle('show');
+        });
+        
+        // Закрытие меню при клике вне его
+        document.addEventListener('click', () => {
+            languageMenu.classList.remove('show');
+        });
+        
+        // Предотвращение закрытия при клике на меню
+        languageMenu.addEventListener('click', (e) => {
+            e.stopPropagation();
+        });
+        
+        // Слушаем изменения языка
+        document.addEventListener('languageChanged', async () => {
+            await updateLanguageDisplay();
+            await createLanguageMenu();
+        });
+        
+        // Инициализация
+        await updateLanguageDisplay();
+        await createLanguageMenu();
+
+        // Инициализируем переключатель языка
+        await updateLanguageDisplay();
+        await createLanguageMenu();
+        
+        console.log('[Login] Локализация инициализирована');
+      } catch (error) {
+        console.error('[Login] Ошибка инициализации локализации:', error);
+      }
+    });
+
+
+
+  </script>
+  <script src="../scripts/modules/staticTranslations.js"></script>
+</body>
+</html>
