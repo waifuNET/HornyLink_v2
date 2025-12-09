@@ -101,7 +101,7 @@ class LanguageVariables {
             return messagesBySection[code];
         } else {
             console.warn(`[STATE] Перевод для кода "${code}" в секции "${section}" не найден в языке "${lang}".`);
-            return `[STATE] ${section} код: ${code}`;
+            return `${section}.${code}`;
         }
     }
 

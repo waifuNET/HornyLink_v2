@@ -7,7 +7,6 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: 'Segoe UI', sans-serif;
   background-color: var(--bg-page);
   color: var(--text-primary);
   display: flex;
@@ -250,7 +249,6 @@ body {
 }
 
 .copy-key {
-  font-family: "Consolas", "Monaco", monospace;
   font-size: 1.18em;
   color: var(--accent-code);
   padding: 2px 10px;
