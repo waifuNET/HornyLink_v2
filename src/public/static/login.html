@@ -169,16 +169,17 @@
         return;
       }
 
-      const res = await window.electronAPI.tgPreRegister({ email, username, password });
+      const res = await window.electronAPI.telegramRegistration(username, password, email);
 
-      if (!res.success) {
-        document.getElementById('register-message').textContent = res.error || await window.t('login_ui.REGISTRATION_ERROR');
+      if (!res?.success) {
+        console.log(res);
+        document.getElementById('register-message').textContent = res?.error || await window.t('login_ui.REGISTRATION_ERROR');
         return;
       }
 
     document.getElementById('register-message').innerHTML = `
       <div class="tg-confirm-block">
-        <h3>${await window.t('login_ui.complete_registration')}</h3>
+        <h3>${await window.t('login_ui.COMPLITE_REGISTRATION')}</h3>
         <ol>
           <li>${await window.t('login_ui.OPEN')} <a href="https://t.me/${cfg.telegramBotName_clear}?start=${res.key}" target="_blank" style="color:#4a8cff;text-decoration:underline;font-weight:bold;">${await window.t('login_ui.TELEGRAM_BOT')}</a></li>
           <li>
@@ -271,7 +272,7 @@
         return;
       }
 
-      const result = await window.electronAPI.tgResetPassword({ key, new_password: newPass });
+      const result = await window.electronAPI.telegramResetPassword(key, newPass);
 
       if (result.success) {
         status.textContent = await window.t('login_ui.PASSWORD_RESET_SUCCESS');

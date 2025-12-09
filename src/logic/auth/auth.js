@@ -123,6 +123,45 @@ class Auth{
     }, intervalMs);
   }
 
+  static async telegramRegistration(username, password, email){
+    try{
+      const registrationRes = await fetch(`${SERVER_URL}/auth/tg/pre-register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({email, username, password}),
+        timeout: 10000
+      }).catch(err => {
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      });
+      return registrationRes.json();
+    }
+    catch{
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+    }
+  }
+
+    static async telegramResetPassword(key, newPassword){
+    try{
+      const registrationRes = await fetch(`${SERVER_URL}/auth/tg/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reset_key: key, 
+          new_password: newPassword 
+        }),
+        timeout: 10000
+      }).catch(err => {
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      });
+      return registrationRes.json();
+    }
+    catch{
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+    }
+  }
+
   static async forceAuthenticate(username, password){
     try {
       const internetConnection = await hasInternetConnection();

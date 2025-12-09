@@ -9,4 +9,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // Login && registration
     tryAuth: (login, password) => ipcRenderer.invoke('try-auth', login, password),
+    telegramRegistration: (username, password, email) => ipcRenderer.invoke('telegram-registration', username, password, email),
+    telegramResetPassword: (key, newPassword) => ipcRenderer.invoke('telegram-reset-password', key, newPassword),
+
+    // CFG
+    getCfg: () => ipcRenderer.invoke('get-cfg'),
 });

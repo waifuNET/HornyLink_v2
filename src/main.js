@@ -10,9 +10,11 @@ ApplicationSettings.loadSettings();
 
 const setupIpcHandlers_languages = require('./logic/ipc/ipcHandlers_languages');
 const setupIpcHandlers_auth = require('./logic/ipc/ipcHandlers_auth');
+const setupIpcHandlers_cfg = require('./logic/ipc/ipcHandlers_cfg');
 
 setupIpcHandlers_languages();
 setupIpcHandlers_auth();
+setupIpcHandlers_cfg();
 
 // Флаг полного выхода из приложения
 app.isQuiting = false;
