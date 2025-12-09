@@ -63,8 +63,8 @@ function devHackSecure(win){
 }
 
 function createTray(){
-    const iconPath = path.join(__dirname, "public", "icon.png");
-    const trayIcon = nativeImage.createFromPath(iconPath);
+  const iconPath = path.join(__dirname, "public", "icon.ico");
+  const trayIcon = nativeImage.createFromPath(iconPath);
 
   tray = new Tray(trayIcon);
   
@@ -72,8 +72,8 @@ function createTray(){
     {
       label: LanguageVariables.getMessage('TRAY_OPEN', 'application', ApplicationSettings.settings.language),
       click: () => {
-        mainWindow.show();
-        mainWindow.focus();
+        WindowUtils.win.show();
+        WindowUtils.win.focus();
       }
     },
     {
@@ -88,17 +88,17 @@ function createTray(){
   tray.setToolTip('HornyLink');
   
   tray.on('click', () => {
-    if (mainWindow.isVisible()) {
-      mainWindow.hide();
+    if (WindowUtils.win.isVisible()) {
+      WindowUtils.win.hide();
     } else {
-      mainWindow.show();
-      mainWindow.focus();
+      WindowUtils.win.show();
+      WindowUtils.win.focus();
     }
   });
   
   tray.on('double-click', () => {
-    mainWindow.show();
-    mainWindow.focus();
+    WindowUtils.win.show();
+    WindowUtils.win.focus();
   });
   
   tray.on('right-click', () => {
@@ -169,7 +169,7 @@ async function createLoadingWindow() {
 
   devHackSecure(loading);
 
-  loading.loadFile(path.join(__dirname, 'public', './static/appLoading.html'));
+  WindowUtils.goToPage('/static/appLoading.html');
   loading.isMainWindowCreated = false;
   
   loading.on('closed', () => {
