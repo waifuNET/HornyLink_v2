@@ -110,12 +110,12 @@ class Auth{
     return this.cookie;
   }
 
-  static async createAuthCheckInterval(intervalMs = 60000) {
+  static async createAuthCheckInterval(intervalMs = 30000) {
     if (this._checkAuthInterval) {
       clearInterval(this._checkAuthInterval);
     }
-    this._checkAuthInterval = setInterval(() => {
-      const isAuth = this.checkAuthentication();
+    this._checkAuthInterval = setInterval(async () => {
+      const isAuth = await this.checkAuthentication();
       if(!isAuth.isAuthenticated){
         console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_CHECK_FAILED', 'errors', ApplicationSettings.settings.language)}`);
         this.authenticate();
@@ -219,50 +219,62 @@ class Auth{
   }
 
   static async checkAuthentication() {
-        if (!this.cookie) {
-            console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NO_COOKIE', 'errors', ApplicationSettings.settings.language)}`);
-            return { isAuthenticated: false, userData: null };
-        }
-        try {
-            const response = await fetch(`${SERVER_URL}/auth/me`, {
-                method: 'GET',
-                headers: {
+      if (!this.cookie) {
+          console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NO_COOKIE', 'errors', ApplicationSettings.settings.language)}`);
+          return { isAuthenticated: false, userData: null };
+      }
+
+      try {
+          const response = await fetch(`${SERVER_URL}/auth/me`, {
+              method: 'GET',
+              headers: {
                   'Content-Type': 'application/json',
                   'Cookie': this.cookie 
-                }
-            }).catch(err => {
-                console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-                return { isAuthenticated: false, userData: null, reason: `${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
-            });
+              }
+          });
 
-            if (response.ok) {
-                const userData = await response.json();
-                
-                if (userData && userData.id && userData.username) {
-                  LocalUserBase.setUserData({
-                    id: userData.id,
-                    username: userData.username,
-                    premium_until: userData.premium_until || null
-                  });
-                  return { isAuthenticated: true, userData: userData };
-                }
-            }
+          if (!response.ok) {
+              const errorBody = await response.json().catch(() => null);
 
-            const errorBody = await response.json().catch(() => null);
-            
-            if (response.status === 401 && errorBody?.error === "Не авторизован.") {
-                console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language)}:`, errorBody.error);
-                return { isAuthenticated: false, userData: null, reason: LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language) };
-            }
+              if (response.status === 401 && errorBody?.error === "Не авторизован.") {
+                  console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language)}:`, errorBody.error);
+                  return {
+                      isAuthenticated: false,
+                      userData: null,
+                      reason: LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language)
+                  };
+              }
 
-            console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_UNEXPECTED_SERVER_RESPONSE', 'errors', ApplicationSettings.settings.language)}:`, response.status);
-            return { isAuthenticated: false, userData: null, reason: `${LanguageVariables.getMessage('AUTH_UNEXPECTED_SERVER_RESPONSE', 'errors', ApplicationSettings.settings.language)}: ${response.status}` };
+              console.log(`[AUTH] Unexpected status:`, response.status);
+              return {
+                  isAuthenticated: false,
+                  userData: null,
+                  reason: `${LanguageVariables.getMessage('AUTH_UNEXPECTED_SERVER_RESPONSE', 'errors', ApplicationSettings.settings.language)}: ${response.status}`
+              };
+          }
 
-        } catch (err) {
-            console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-            return { isAuthenticated: false, userData: null, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
-        }
-    }
+          const userData = await response.json();
+          if (userData?.id && userData?.username) {
+              LocalUserBase.setUserData({
+                  id: userData.id,
+                  username: userData.username,
+                  premium_until: userData.premium_until || null
+              });
+
+              return { isAuthenticated: true, userData };
+          }
+
+          return { isAuthenticated: false, userData: null, reason: "Invalid user data" };
+
+      } catch (err) {
+          console.log(`[AUTH] NETWORK ERROR:`, err.message);
+          return {
+              isAuthenticated: false,
+              userData: null,
+              reason: `${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}`
+          };
+      }
+  }
 }
 
 module.exports = { 
