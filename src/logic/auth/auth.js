@@ -21,7 +21,7 @@ class BaseAuth {
       const encrypted = Buffer.concat([cipher.update(json, 'utf8'), cipher.final()]);
       return Buffer.concat([iv, encrypted]).toString('hex');
     } catch (err) {
-      console.error(`[AUTH] ${LanguageVariables.getMessage('ENCRYPTION_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      console.error(`[AUTH] ${LanguageVariables.getMessage('ENCRYPTION_ERROR', 'errors')}:`, err.message);
       return null;
     }
   }
@@ -29,14 +29,14 @@ class BaseAuth {
   static decrypt(encryptedHex) {
     try {
       if (!encryptedHex || typeof encryptedHex !== 'string') {
-        console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors', ApplicationSettings.settings.language)}`);
+        console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors')}`);
         return null;
       }
 
       const buffer = Buffer.from(encryptedHex, 'hex');
 
       if (buffer.length < 16) {
-        console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors', ApplicationSettings.settings.language)}`);
+        console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors')}`);
         return null;
       }
 
@@ -50,7 +50,7 @@ class BaseAuth {
       const result = JSON.parse(decrypted.toString('utf8'));
       return result;
     } catch (err) {
-      console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      console.error(`[AUTH] ${LanguageVariables.getMessage('DECRYPTION_ERROR', 'errors')}:`, err.message);
       return null;
     }
   }
@@ -64,24 +64,24 @@ class BaseAuth {
       const encryptedData = this.encrypt(data);
       if (encryptedData) {
         fs.writeFileSync(dataAuthPath, encryptedData, 'utf8');
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVED', 'success', ApplicationSettings.settings.language)}`);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVED', 'success')}`);
       }
     } catch (err) {
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVE_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVE_ERROR', 'errors')}:`, err.message);
     }
   }
 
   static loadAuthData() {
     try {
       if (!fs.existsSync(dataAuthPath)) {
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_LOAD_ERROR', 'errors', ApplicationSettings.settings.language)}`);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_LOAD_ERROR', 'errors')}`);
         return null;
       }
 
       const encryptedData = fs.readFileSync(dataAuthPath, 'utf8');
       return this.decrypt(encryptedData);
     } catch (err) {
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_LOAD_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_LOAD_ERROR', 'errors')}:`, err.message);
       return null;
     }
   }
@@ -90,10 +90,10 @@ class BaseAuth {
     try {
       if (fs.existsSync(dataAuthPath)) {
         fs.unlinkSync(dataAuthPath);
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVED', 'success', ApplicationSettings.settings.language)}`);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVED', 'success')}`);
       }
     } catch (err) {
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVE_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_DATA_SAVE_ERROR', 'errors')}:`, err.message);
     }
   }
 
@@ -117,7 +117,7 @@ class Auth{
     this._checkAuthInterval = setInterval(async () => {
       const isAuth = await this.checkAuthentication();
       if(!isAuth.isAuthenticated){
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_CHECK_FAILED', 'errors', ApplicationSettings.settings.language)}`);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_CHECK_FAILED', 'errors')}`);
         this.authenticate();
       }
     }, intervalMs);
@@ -131,17 +131,17 @@ class Auth{
         body: JSON.stringify({email, username, password}),
         timeout: 10000
       }).catch(err => {
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors')}:`, err.message);
       });
       return registrationRes.json();
     }
     catch{
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}: ${err.message}` };
     }
   }
 
-    static async telegramResetPassword(key, newPassword){
+  static async telegramResetPassword(key, newPassword){
     try{
       const registrationRes = await fetch(`${SERVER_URL}/auth/tg/reset-password`, {
         method: 'POST',
@@ -152,13 +152,13 @@ class Auth{
         }),
         timeout: 10000
       }).catch(err => {
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors')}:`, err.message);
       });
       return registrationRes.json();
     }
     catch{
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}: ${err.message}` };
     }
   }
 
@@ -172,12 +172,12 @@ class Auth{
         body: JSON.stringify({username, password}),
         timeout: 10000
       }).catch(err => {
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors')}:`, err.message);
       });
 
       if(!loginRes.ok){
         const errorBody = await loginRes.text().catch(() => null);
-        return { success: false, reason: `${LanguageVariables.getMessage('AUTH_SERVER_ERROR', 'errors', ApplicationSettings.settings.language)}: ${loginRes.status} ${loginRes.statusText} ${errorBody ? '- ' + errorBody : ''}` };
+        return { success: false, reason: `${LanguageVariables.getMessage('AUTH_SERVER_ERROR', 'errors')}: ${loginRes.status} ${loginRes.statusText} ${errorBody ? '- ' + errorBody : ''}` };
       }
       else{
         const authData = BaseAuth.encrypt({username: username, password: password}); 
@@ -186,8 +186,8 @@ class Auth{
         return { success: true };
       }
     }catch(err){
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}: ${err.message}` };
     }
   }
 
@@ -199,13 +199,13 @@ class Auth{
       const creds = BaseAuth.decrypt(BaseAuth.loadAuthData());
 
       if(!creds?.username || !creds?.password){
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_LOW_DATA', 'errors', ApplicationSettings.settings.language)}`);
-        return { success: false, reason: LanguageVariables.getMessage('AUTH_LOW_DATA', 'errors', ApplicationSettings.settings.language) };
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_LOW_DATA', 'errors')}`);
+        return { success: false, reason: LanguageVariables.getMessage('AUTH_LOW_DATA', 'errors') };
       }
       else if((creds?.username && creds?.password) && !internetConnection){
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_OFFLINE_MODE', 'errors', ApplicationSettings.settings.language)}`);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_OFFLINE_MODE', 'errors')}`);
         LocalUserBase.setUserData({username: creds.username, id: -1, premium_until: null});
-        return { success: true, reason: LanguageVariables.getMessage('AUTH_OFFLINE_MODE', 'errors', ApplicationSettings.settings.language) };
+        return { success: true, reason: LanguageVariables.getMessage('AUTH_OFFLINE_MODE', 'errors') };
       }
 
       const loginRes = await fetch(`${SERVER_URL}/auth/login`, {
@@ -214,12 +214,12 @@ class Auth{
         body: JSON.stringify(creds),
         timeout: 10000
       }).catch(err => {
-        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
+        console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors')}:`, err.message);
       });
 
       if(!loginRes.ok){
         const errorBody = await loginRes.text().catch(() => null);
-        return { success: false, reason: `${LanguageVariables.getMessage('AUTH_SERVER_ERROR', 'errors', ApplicationSettings.settings.language)}: ${loginRes.status} ${loginRes.statusText} ${errorBody ? '- ' + errorBody : ''}` };
+        return { success: false, reason: `${LanguageVariables.getMessage('AUTH_SERVER_ERROR', 'errors')}: ${loginRes.status} ${loginRes.statusText} ${errorBody ? '- ' + errorBody : ''}` };
       }
 
       const cookieHeader = loginRes.headers.get('set-cookie');
@@ -231,15 +231,15 @@ class Auth{
         data = await loginRes.json();
       }
       catch{
-        return { success: false, reason: LanguageVariables.getMessage('AUTH_INCORRECT_SERVER_RESPONSE', 'errors', ApplicationSettings.settings.language) };
+        return { success: false, reason: LanguageVariables.getMessage('AUTH_INCORRECT_SERVER_RESPONSE', 'errors') };
       }
 
       if(!data?.success){
-        return { success: false, reason: LanguageVariables.getMessage('AUTHORIZATION_ERROR', 'errors', ApplicationSettings.settings.language) };
+        return { success: false, reason: LanguageVariables.getMessage('AUTHORIZATION_ERROR', 'errors') };
       }
 
       if (!data.user?.id || !data.user?.username) {
-        return { success: false, reason: LanguageVariables.getMessage('AUTHORIZATION_ERROR', 'errors', ApplicationSettings.settings.language) };
+        return { success: false, reason: LanguageVariables.getMessage('AUTHORIZATION_ERROR', 'errors') };
       }
 
       LocalUserBase.setUserData({
@@ -252,14 +252,14 @@ class Auth{
         success: true,
       };
     }catch(err){
-      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}:`, err.message);
-      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}` };
+      console.error(`[AUTH] ${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}:`, err.message);
+      return { success: false, reason: `${LanguageVariables.getMessage('AUTH_ERROR', 'errors')}: ${err.message}` };
     }
   }
 
   static async checkAuthentication() {
       if (!this.cookie) {
-          console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NO_COOKIE', 'errors', ApplicationSettings.settings.language)}`);
+          console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_NO_COOKIE', 'errors')}`);
           return { isAuthenticated: false, userData: null };
       }
 
@@ -276,11 +276,11 @@ class Auth{
               const errorBody = await response.json().catch(() => null);
 
               if (response.status === 401 && errorBody?.error === "Не авторизован.") {
-                  console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language)}:`, errorBody.error);
+                  console.log(`[AUTH] ${LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors')}:`, errorBody.error);
                   return {
                       isAuthenticated: false,
                       userData: null,
-                      reason: LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors', ApplicationSettings.settings.language)
+                      reason: LanguageVariables.getMessage('AUTH_INVALID_COOKIE', 'errors')
                   };
               }
 
@@ -288,7 +288,7 @@ class Auth{
               return {
                   isAuthenticated: false,
                   userData: null,
-                  reason: `${LanguageVariables.getMessage('AUTH_UNEXPECTED_SERVER_RESPONSE', 'errors', ApplicationSettings.settings.language)}: ${response.status}`
+                  reason: `${LanguageVariables.getMessage('AUTH_UNEXPECTED_SERVER_RESPONSE', 'errors')}: ${response.status}`
               };
           }
 
@@ -310,7 +310,7 @@ class Auth{
           return {
               isAuthenticated: false,
               userData: null,
-              reason: `${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors', ApplicationSettings.settings.language)}: ${err.message}`
+              reason: `${LanguageVariables.getMessage('AUTH_NETWORK_ERROR', 'errors')}: ${err.message}`
           };
       }
   }

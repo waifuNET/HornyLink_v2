@@ -3,7 +3,7 @@ const { LanguageVariables, ApplicationSettings } = require('../../state');
 
 function setupIpcHandlers_languages() {
     ipcMain.handle('get-language-message', (event, code, section) => {
-        return LanguageVariables.getMessage(code, section, ApplicationSettings.settings.language);
+        return LanguageVariables.getMessage(code, section);
     });
 
     ipcMain.handle('get-all-languages', (event) =>{

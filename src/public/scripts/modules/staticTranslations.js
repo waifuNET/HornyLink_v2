@@ -1,8 +1,8 @@
 (function() {
     'use strict';
 
-    if (!window.electronAPI || typeof window.electronAPI.getLanguageMessage !== 'function') {
-        console.error("i18n Module Error: window.electronAPI.getLanguageMessage is not defined. Internationalization will not work.");
+    if (!window.electronAPI || typeof window.electronAPI.language.getLanguageMessage !== 'function') {
+        console.error("i18n Module Error: window.electronAPI.language.getLanguageMessage is not defined. Internationalization will not work.");
         return;
     }
 
@@ -22,7 +22,7 @@
                 namespace = element.dataset.i18nNamespace || 'ui';
             }
 
-            const translatedText = await window.electronAPI.getLanguageMessage(key, namespace);
+            const translatedText = await window.electronAPI.language.getLanguageMessage(key, namespace);
 
             if (element.tagName === 'TITLE') {
                 document.title = translatedText;
@@ -94,7 +94,7 @@
                 key = i18nKey;
             }
 
-            const result = await window.electronAPI.getLanguageMessage(key, namespace);
+            const result = await window.electronAPI.language.getLanguageMessage(key, namespace);
             return result;
 
         } catch (err) {

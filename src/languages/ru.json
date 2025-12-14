@@ -82,7 +82,9 @@
         "DEVTOOLS_CLOSED": "DevTools были закрыты для обеспечения безопасности.",
         "APP_LOADING_CANCELLED": "Загрузка приложения была прервана пользователем.",
         "AUTHORIZATION_ERROR": "Ошибка авторизации.",
-        "INCURRECT_USER_DATA": "Не корректный ответ сервера."
+        "INCURRECT_USER_DATA": "Не корректный ответ сервера.",
+        "INCURRECT_SERVER_ANSWER": "Данные сервера не совпадают с ожидаемыми.",
+        "UPDATE_GAME_LIST": "Ошибка обновления списка игр."
     },
     "success":{
         "SETTINGS_LOADED": "Настройки успешно загружены.",

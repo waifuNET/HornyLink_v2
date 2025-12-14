@@ -6,15 +6,22 @@ const { internetConnection } = require('./state');
 const { Auth } = require('./logic/auth/auth');
 const WindowUtils = require('./utils/windowUtils')
 const { LanguageVariables, ApplicationSettings } = require('./state');
+const Games = require('./logic/games/games');
 ApplicationSettings.loadSettings();
 
 const setupIpcHandlers_languages = require('./logic/ipc/ipcHandlers_languages');
 const setupIpcHandlers_auth = require('./logic/ipc/ipcHandlers_auth');
 const setupIpcHandlers_cfg = require('./logic/ipc/ipcHandlers_cfg');
+const setupIpcHandlers_games = require('./logic/ipc/ipcHandlers_games');
 
 setupIpcHandlers_languages();
 setupIpcHandlers_auth();
 setupIpcHandlers_cfg();
+setupIpcHandlers_games();
+
+async function InitModules(){
+  await Games.Init();
+}
 
 // Флаг полного выхода из приложения
 app.isQuiting = false;
@@ -27,13 +34,13 @@ const gotTheLock = app.requestSingleInstanceLock();
 
 // Обработка ситуации, когда второй экземпляр пытается запуститься
 if(!gotTheLock) {
-    console.log(`[MAIN] ${LanguageVariables.getMessage('SINGLE_INSTANCE_LOCK', 'errors', ApplicationSettings.settings.language)}`);
+    console.log(`[MAIN] ${LanguageVariables.getMessage('SINGLE_INSTANCE_LOCK', 'errors')}`);
     app.isQuiting = true;
     app.quit();
 }
 else{
     app.on('second-instance', (event, commandLine, workingDirectory) => {
-        console.log(`[MAIN] ${LanguageVariables.getMessage('SINGLE_INSTANCE_ATTEMPT', 'errors', ApplicationSettings.settings.language)}`);
+        console.log(`[MAIN] ${LanguageVariables.getMessage('SINGLE_INSTANCE_ATTEMPT', 'errors')}`);
         app.isQuiting = true;
 
         if(tray){
@@ -50,7 +57,7 @@ else{
 
 function devHackSecure(win){
     win.webContents.on('devtools-opened', () => {
-        console.log(`[MAIN] ${ LanguageVariables.getMessage('DEVTOOLS_CLOSED', 'errors', ApplicationSettings.settings.language) }`);
+        console.log(`[MAIN] ${ LanguageVariables.getMessage('DEVTOOLS_CLOSED', 'errors') }`);
         win.webContents.closeDevTools();
     });
 
@@ -72,14 +79,14 @@ function createTray(){
   
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: LanguageVariables.getMessage('TRAY_OPEN', 'application', ApplicationSettings.settings.language),
+      label: LanguageVariables.getMessage('TRAY_OPEN', 'application'),
       click: () => {
         WindowUtils.win.show();
         WindowUtils.win.focus();
       }
     },
     {
-      label: LanguageVariables.getMessage('TRAY_CLOSE', 'application', ApplicationSettings.settings.language),
+      label: LanguageVariables.getMessage('TRAY_CLOSE', 'application'),
       click: () => {
         app.isQuiting = true;
         app.quit();
@@ -178,7 +185,7 @@ async function createLoadingWindow() {
   
   loading.on('closed', () => {
     if (!loading.isMainWindowCreated) {
-      console.log(`[MAIN] ${LanguageVariables.getMessage('APP_LOADING_CANCELLED', 'errors', ApplicationSettings.settings.language)}`);
+      console.log(`[MAIN] ${LanguageVariables.getMessage('APP_LOADING_CANCELLED', 'errors')}`);
       app.isQuiting = true;
       app.quit();
     }
@@ -200,12 +207,14 @@ app.whenReady().then(async () => {
     const authorizationStatus = await Auth.authenticate();
     console.log("[MAIN] Authorization status:", authorizationStatus);
 
+    await InitModules();
+
     if(!internetConnection && !authorizationStatus?.success){
         WindowUtils.goToPage('./static/no-internet.html');
         winLoading.hide();
         win.show();
     } else if(!authorizationStatus?.success && internetConnection){
-        WindowUtils.goToPage('./static/login.html');
+        WindowUtils.goToPage('/static/login.html');
         winLoading.hide();
         win.show();
     }

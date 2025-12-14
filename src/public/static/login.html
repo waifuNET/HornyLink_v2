@@ -112,7 +112,7 @@
       msg.textContent = '...';
 
       try {
-        const result = await window.electronAPI.tryAuth(username, password);
+        const result = await window.electronAPI.auth.tryAuth(username, password);
         console.log("Auth result:", result);
 
         if (result.success) {
@@ -169,7 +169,7 @@
         return;
       }
 
-      const res = await window.electronAPI.telegramRegistration(username, password, email);
+      const res = await window.electronAPI.auth.telegramRegistration(username, password, email);
 
       if (!res?.success) {
         console.log(res);
@@ -272,7 +272,7 @@
         return;
       }
 
-      const result = await window.electronAPI.telegramResetPassword(key, newPass);
+      const result = await window.electronAPI.auth.telegramResetPassword(key, newPass);
 
       if (result.success) {
         status.textContent = await window.t('login_ui.PASSWORD_RESET_SUCCESS');
@@ -288,14 +288,14 @@
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
-        const languages = await window.electronAPI.getAllLanguages();
-        let currentLang = await window.electronAPI.getCurrentLanguage();
+        const languages = await window.electronAPI.language.getAllLanguages();
+        let currentLang = await window.electronAPI.language.getCurrentLanguage();
         
         const languageToggle = document.getElementById('languageToggle');
         const languageMenu = document.getElementById('languageMenu');
         
         async function updateLanguageDisplay() {
-          currentLang = await window.electronAPI.getCurrentLanguage();
+          currentLang = await window.electronAPI.language.getCurrentLanguage();
           languageToggle.textContent = `🌐 ${currentLang.toUpperCase()}`;
         }
         
@@ -314,7 +314,7 @@
             
             option.addEventListener('click', async () => {
                 if (code !== currentLang) {
-                await window.electronAPI.changeLanguage(code);
+                await window.electronAPI.language.changeLanguage(code);
                 await updateLanguageDisplay();
                 await createLanguageMenu();
 

@@ -68,7 +68,7 @@
     text-transform: uppercase;
     letter-spacing: 0.5px;
     background-color: rgba(0, 0, 0, 0.2);
-    position: sticky;
+    position: relative;
     top: 0;
     z-index: 10;
 }
@@ -423,4 +423,53 @@
 }
 .friend-grid-avatar:hover {
     transform: scale(1.05);
+}
+
+/* PAGES IN GAME */
+.game-item {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.game-item.moving {
+    opacity: 0.7;
+}
+
+.game-header {
+    transition: background-image 0.3s ease;
+}
+
+.game-content {
+    transition: opacity 0.2s ease;
+}
+
+.screenshots-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 15px;
+    padding: 20px 0;
+}
+
+.screenshot-item {
+    position: relative;
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: 8px;
+    aspect-ratio: 16/9;
+}
+
+.screenshot-item img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.screenshot-item:hover img {
+    transform: scale(1.05);
+}
+
+.loading {
+    text-align: center;
+    padding: 20px;
+    color: #999;
 }
