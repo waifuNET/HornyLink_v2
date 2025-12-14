@@ -6,19 +6,295 @@
     <title id="title">HornyLink</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../css/base.css">
-    <link rel="stylesheet" href="../css/app.css">
+    <link rel="stylesheet" href="../css/header.css">
+    <link rel="stylesheet" href="../css/library.css">
 </head>
 <body>
     <header id="header"></header>
 
-    <div id="content">
-        
+    <div id="lib-content">
+        <div id="lib-left">
+            <div id="top-filter">
+                <div class="search-container">
+                    <span class="search-icon">🔍</span>
+                    <input id="lib-search" type="text" placeholder="Поиск игр...">
+                </div>
+            </div>
+            
+            <div id="games-list">
+                <div class="game-section">
+                    <div class="section-header">Недавнее (5)</div>
+                    <div class="game-item active">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/236390/header.jpg" alt="War Thunder" class="game-icon">
+                        <span class="game-name">War Thunder</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/933110/header.jpg" alt="Ведьмак 3" class="game-icon">
+                        <span class="game-name">Ведьмак 3: Дикая Охота</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/550/header.jpg" alt="Left 4 Dead 2" class="game-icon">
+                        <span class="game-name">Left 4 Dead 2</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/header.jpg" alt="Game Dev Tycoon" class="game-icon">
+                        <span class="game-name">Game Dev Tycoon</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/570/header.jpg" alt="Dota 2" class="game-icon">
+                        <span class="game-name">Dota 2</span>
+                    </div>
+                </div>
+
+                <div class="game-section">
+                    <div class="section-header">Октябрь (7)</div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/32440/header.jpg" alt="GTA V" class="game-icon">
+                        <span class="game-name">Grand Theft Auto V Legacy</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1623730/header.jpg" alt="Bongo Cat" class="game-icon">
+                        <span class="game-name">Bongo Cat</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/698780/header.jpg" alt="Yandere School" class="game-icon">
+                        <span class="game-name">Yandere School</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/578080/header.jpg" alt="PUBG" class="game-icon">
+                        <span class="game-name">PUBG: BATTLEGROUNDS</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/427520/header.jpg" alt="Farmer" class="game-icon">
+                        <span class="game-name">The Farmer Was Replaced</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1285410/header.jpg" alt="VRChat" class="game-icon">
+                        <span class="game-name">VRChat</span>
+                    </div>
+                </div>
+
+                <div class="game-section">
+                    <div class="section-header">Сентябрь (4)</div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/271590/header.jpg" alt="GTA V" class="game-icon">
+                        <span class="game-name">Grand Theft Auto V</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg" alt="CS2" class="game-icon">
+                        <span class="game-name">Counter-Strike 2</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/289070/header.jpg" alt="Civilization VI" class="game-icon">
+                        <span class="game-name">Sid Meier's Civilization VI</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg" alt="Elden Ring" class="game-icon">
+                        <span class="game-name">ELDEN RING</span>
+                    </div>
+                </div>
+
+                <div class="game-section">
+                    <div class="section-header">2023 (6)</div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/292030/header.jpg" alt="Witcher 3" class="game-icon">
+                        <span class="game-name">The Witcher 3: Wild Hunt</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/413150/header.jpg" alt="Stardew Valley" class="game-icon">
+                        <span class="game-name">Stardew Valley</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg" alt="Cyberpunk" class="game-icon">
+                        <span class="game-name">Cyberpunk 2077</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/346110/header.jpg" alt="ARK" class="game-icon">
+                        <span class="game-name">ARK: Survival Evolved</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1203220/header.jpg" alt="Naraka" class="game-icon">
+                        <span class="game-name">NARAKA: BLADEPOINT</span>
+                    </div>
+                    <div class="game-item">
+                        <img src="https://cdn.cloudflare.steamstatic.com/steam/apps/1517290/header.jpg" alt="Battlefield 2042" class="game-icon">
+                        <span class="game-name">Battlefield 2042</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="lib-right">
+            <div class="game-header" style="background-image: url('https://cdn.cloudflare.steamstatic.com/steam/apps/550/library_hero.jpg');">
+                <div class="game-title">Left 4 Dead 2</div>
+            </div>
+
+            <div class="game-actions">
+                <button class="btn-play">▶ ИГРАТЬ</button>
+                <div class="game-info-bar">
+                    <div class="info-item">
+                        <div class="info-label">Облачные сохранения</div>
+                        <div class="info-value">Синхронизированы</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Последний запуск</div>
+                        <div class="info-value">16 нояб.</div>
+                    </div>
+                    <div class="info-item">
+                        <div class="info-label">Вы играли</div>
+                        <div class="info-value">68,9 ч.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="game-tabs">
+                <div class="tab active">Активность</div>
+                <div class="tab">Изображения</div>
+                <div class="tab">Доп. контент</div>
+                <div class="tab">Комментарии</div>
+                <div class="tab">Обсуждения</div>
+                <div class="tab">Руководства</div>
+            </div>
+
+            <div class="game-content">
+                <div class="comments-section">
+                    <h2>Лента активности</h2>
+                    
+                    <div class="comment">
+                        <div class="comment-header">
+                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg" alt="Avatar" class="comment-avatar">
+                            <div class="comment-author">
+                                <div class="author-name">do_you_want_cocoa?</div>
+                                <div class="comment-date">2 дня назад</div>
+                            </div>
+                        </div>
+                        <div class="comment-text">
+                            Одна из лучших кооперативных игр всех времён! Проходил с друзьями уже раз 10, и каждый раз это невероятно весело. Особенно на экспертной сложности - адреналин зашкаливает!
+                        </div>
+                        <div class="comment-actions">
+                            <div class="comment-action">👍 15</div>
+                            <div class="comment-action">💬 Ответить</div>
+                            <div class="comment-action">⚠ Пожаловаться</div>
+                        </div>
+                    </div>
+
+                    <div class="comment">
+                        <div class="comment-header">
+                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/b5/b5bd56c1aa4644a474a2e4972be27ef9e82e517e_full.jpg" alt="Avatar" class="comment-avatar">
+                            <div class="comment-author">
+                                <div class="author-name">l_PASTA_MEN_l</div>
+                                <div class="comment-date">5 дней назад</div>
+                            </div>
+                        </div>
+                        <div class="comment-text">
+                            Графика уже устарела, но геймплей до сих пор на высоте. Моды делают игру еще лучше. Всем рекомендую попробовать кастомные кампании!
+                        </div>
+                        <div class="comment-actions">
+                            <div class="comment-action">👍 8</div>
+                            <div class="comment-action">💬 Ответить</div>
+                            <div class="comment-action">⚠ Пожаловаться</div>
+                        </div>
+                    </div>
+
+                    <div class="comment">
+                        <div class="comment-header">
+                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/c5/c5d56249ee5d28a07db4ac9f7f60af961fab5426_full.jpg" alt="Avatar" class="comment-avatar">
+                            <div class="comment-author">
+                                <div class="author-name">ZombieSlayer2000</div>
+                                <div class="comment-date">1 неделю назад</div>
+                            </div>
+                        </div>
+                        <div class="comment-text">
+                            Скучновато играть одному с ботами, но с живыми игроками - просто огонь! Рекомендую искать команду в Discord для большего фана.
+                        </div>
+                        <div class="comment-actions">
+                            <div class="comment-action">👍 23</div>
+                            <div class="comment-action">💬 Ответить</div>
+                            <div class="comment-action">⚠ Пожаловаться</div>
+                        </div>
+                    </div>
+
+                    <div class="comment">
+                        <div class="comment-header">
+                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/42/424ce979831b85969b14296f4c9ac6761d8c93db_full.jpg" alt="Avatar" class="comment-avatar">
+                            <div class="comment-author">
+                                <div class="author-name">oh my FAIL</div>
+                                <div class="comment-date">2 недели назад</div>
+                            </div>
+                        </div>
+                        <div class="comment-text">
+                            Valve, пожалуйста, сделайте уже Left 4 Dead 3! Эта игра доказала, что формула работает идеально. Хочется продолжения с современной графикой!
+                        </div>
+                        <div class="comment-actions">
+                            <div class="comment-action">👍 42</div>
+                            <div class="comment-action">💬 Ответить</div>
+                            <div class="comment-action">⚠ Пожаловаться</div>
+                        </div>
+                    </div>
+
+                    <div class="comment">
+                        <div class="comment-header">
+                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/d2/d23b4532a5e4f4dfe8d94eaea3f2955f3a90c183_full.jpg" alt="Avatar" class="comment-avatar">
+                            <div class="comment-author">
+                                <div class="author-name">NightWalker</div>
+                                <div class="comment-date">3 недели назад</div>
+                            </div>
+                        </div>
+                        <div class="comment-text">
+                            Лучший зомби-шутер! Играю с 2009 года и до сих пор не надоела. ИИ Director делает каждое прохождение уникальным.
+                        </div>
+                        <div class="comment-actions">
+                            <div class="comment-action">👍 19</div>
+                            <div class="comment-action">💬 Ответить</div>
+                            <div class="comment-action">⚠ Пожаловаться</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="../scripts/modules/staticTranslations.js"></script>
     <script src="../scripts/modules/htmlLoader.js"></script>
     <script>
         window.loadHtmlFile("header", "./elements/header.html");
+    </script>
+
+        <script>
+        // Search functionality
+        const searchInput = document.getElementById('lib-search');
+        const gameItems = document.querySelectorAll('.game-item');
+        const gameSections = document.querySelectorAll('.game-section');
+
+        searchInput.addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            
+            gameSections.forEach(section => {
+                let visibleGames = 0;
+                const games = section.querySelectorAll('.game-item');
+                
+                games.forEach(game => {
+                    const gameName = game.querySelector('.game-name').textContent.toLowerCase();
+                    if (gameName.includes(searchTerm)) {
+                        game.style.display = 'flex';
+                        visibleGames++;
+                    } else {
+                        game.style.display = 'none';
+                    }
+                });
+                
+                // Hide section if no games match
+                section.style.display = visibleGames > 0 ? 'block' : 'none';
+            });
+        });
+
+        // Click handler for games
+        gameItems.forEach(item => {
+            item.addEventListener('click', () => {
+                gameItems.forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+            });
+        });
     </script>
 </body>
 </html>

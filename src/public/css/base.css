@@ -9,6 +9,7 @@
   --bg-input-focus: #353943;
   --bg-telegram-block: #1d2230;
   --bg-button-secondary: #2a2d35;
+  --bg-hover: #2a2d35;
   
   /* Акцентные цвета */
   --accent-primary: #4f5af0;
@@ -57,4 +58,36 @@
   /* Эффекты */
   --backdrop-blur: blur(10px);
   --backdrop-blur-light: blur(5px);
+
+  /* Отступы */
+  --margin-base: 20px 5px, 20px 5px;
+  --padding-base: 20px 5px, 20px 5px;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 5px;
+  background-color: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bg-input); 
+  border-radius: var(--border-radius); 
+  
+  transition: background-color var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--bg-input-focus);
+}
+
+::-webkit-scrollbar-corner {
+  background-color: transparent;
+}
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    height: 100%;
 }

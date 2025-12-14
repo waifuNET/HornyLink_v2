@@ -82,6 +82,8 @@ class LanguageVariables {
     }
 
     static getMessage(code, section, lang = 'ru') {
+        code = (code || '').toUpperCase();
+        
         let translations = this._cache[lang];
 
         if (!translations || this._loadedLang !== lang) {

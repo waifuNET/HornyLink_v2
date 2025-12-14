@@ -125,6 +125,8 @@ async function createWindow() {
   const win = new BrowserWindow({
     width: 1290,
     height: 800,
+    minHeight: 610,
+    minWidth: 1010,
     backgroundColor: '#121212',
     darkTheme: true,
     fullscreenable: false,
