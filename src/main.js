@@ -5,7 +5,8 @@ const { VERSION } = require('./cfg');
 const { internetConnection } = require('./state');
 const { Auth } = require('./logic/auth/auth');
 const WindowUtils = require('./utils/windowUtils')
-const { LanguageVariables, ApplicationSettings } = require('./state');
+const osUtils = require('./utils/osUtils')
+const { LanguageVariables, ApplicationSettings, AppVariables } = require('./state');
 const Games = require('./logic/games/games');
 ApplicationSettings.loadSettings();
 
@@ -13,14 +14,26 @@ const setupIpcHandlers_languages = require('./logic/ipc/ipcHandlers_languages');
 const setupIpcHandlers_auth = require('./logic/ipc/ipcHandlers_auth');
 const setupIpcHandlers_cfg = require('./logic/ipc/ipcHandlers_cfg');
 const setupIpcHandlers_games = require('./logic/ipc/ipcHandlers_games');
+const setupIpcHandlers_os = require('./logic/ipc/ipcHandlers_os');
 
 setupIpcHandlers_languages();
 setupIpcHandlers_auth();
 setupIpcHandlers_cfg();
 setupIpcHandlers_games();
+setupIpcHandlers_os();
 
 async function InitModules(){
   await Games.Init();
+  AppVariables.driveInfo = await osUtils.getDriveInfo();
+  
+  // Обновление информации о дисках каждые 30 минут
+  setInterval(async () => {
+    try {
+      AppVariables.driveInfo = await osUtils.getDriveInfo();
+    } catch (error) {
+      console.error('Ошибка обновления информации о дисках:', error);
+    }
+  }, 30 * 60 * 1000);
 }
 
 // Флаг полного выхода из приложения

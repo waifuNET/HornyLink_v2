@@ -2,22 +2,23 @@
 const state = {
     games: [],
     currentGameId: null,
+    currentGameSize: "Загрузка...",
     searchTerm: '',
     activeTab: 'activity',
     screenshots: [],
     logo: '',
+    comments: [],
+    availableDrives: [] // Доступные диски для установки
 };
+
 // Группировка игр по периодам
 function groupGamesByPeriod(games) {
     const now = new Date();
     const groups = {};
-    // Создаем группу "Недавнее" (30 дней)
     const recentGames = [];
-    
-    // Создаем группы для месяцев и годов
     const monthGroups = {};
-    const yearGroups = {};
     const noDataGames = [];
+    
     games.forEach(game => {
         if (!game.lastPlayDate) {
             noDataGames.push(game);
@@ -41,49 +42,51 @@ function groupGamesByPeriod(games) {
             monthGroups[monthKey].games.push(game);
         }
     });
-    // Добавляем группы в правильном порядке
+    
     if (recentGames.length > 0) {
         groups['recent'] = { title: 'Недавнее', games: recentGames };
     }
-    // Сортируем месяцы по дате (новые первыми)
+    
     const sortedMonths = Object.entries(monthGroups)
         .sort((a, b) => b[1].date - a[1].date);
     sortedMonths.forEach(([key, group]) => {
         groups[key] = { title: group.title, games: group.games };
     });
-    // Добавляем игры без данных в конце
+    
     if (noDataGames.length > 0) {
         groups['no-data'] = { title: 'Нет данных', games: noDataGames };
     }
     return groups;
 }
+
 function getMonthName(monthIndex) {
     const months = ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 
                   'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь'];
     return months[monthIndex];
 }
+
 // Создание элемента игры
 async function createGameElement(game) {
     const div = document.createElement('div');
     div.className = 'game-item';
     div.dataset.gameId = game.id;
     
-    // Создаем placeholder для изображения
     div.innerHTML = `
         <img src="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E" alt="${game.title}" class="game-icon">
         <span class="game-name">${game.title}</span>
     `;
     
     div.addEventListener('click', () => selectGame(game.id));
-    
-    // Асинхронно загружаем лого
     loadGameIcon(div, game.id);
     
     return div;
 }
+
 // Загрузка иконки игры
 async function loadGameIcon(element, gameId) {
     try {
+        if (!window.electronAPI || !window.electronAPI.games) return;
+        
         const logoUrl = await window.electronAPI.games.getGameLogo(gameId);
         const img = element.querySelector('.game-icon');
         if (img && logoUrl) {
@@ -96,37 +99,35 @@ async function loadGameIcon(element, gameId) {
         console.error('Ошибка загрузки лого:', error);
     }
 }
+
 // Обновление списка игр без полной перерисовки
 async function updateGamesList(games) {
     const container = document.getElementById('games-list');
     const groups = groupGamesByPeriod(games);
     
-    // Удаляем сообщение "Загрузка игр..." если оно есть
     const loadingMsg = container.querySelector('.loading');
     if (loadingMsg) {
         loadingMsg.remove();
     }
     
-    // Фильтрация по поиску
     const filteredGames = state.searchTerm 
         ? games.filter(g => g.title.toLowerCase().includes(state.searchTerm.toLowerCase()))
         : games;
-    // Получаем все существующие секции
+    
     const existingSections = Array.from(container.querySelectorAll('.game-section'));
     const processedGroups = new Set();
+    
     for (const [key, group] of Object.entries(groups)) {
         if (group.games.length === 0) continue;
         processedGroups.add(key);
         let section = container.querySelector(`[data-group="${key}"]`);
         
         if (!section) {
-            // Создаем новую секцию
             section = document.createElement('div');
             section.className = 'game-section';
             section.dataset.group = key;
             section.innerHTML = `<div class="section-header">${group.title} (${group.games.length})</div>`;
             
-            // Вставляем в правильное место (по порядку групп)
             const groupKeys = Object.keys(groups);
             const currentIndex = groupKeys.indexOf(key);
             let inserted = false;
@@ -144,25 +145,22 @@ async function updateGamesList(games) {
                 container.appendChild(section);
             }
         }
-        // Обновляем заголовок с количеством
+        
         const header = section.querySelector('.section-header');
         const visibleGames = group.games.filter(g => 
             !state.searchTerm || g.title.toLowerCase().includes(state.searchTerm.toLowerCase())
         );
         header.textContent = `${group.title} (${visibleGames.length})`;
-        // Получаем существующие элементы игр в секции
+        
         const existingGameElements = Array.from(section.querySelectorAll('.game-item'));
-        const existingGameIds = new Set(existingGameElements.map(el => el.dataset.gameId));
-        // Обновляем/добавляем игры в секции
+        
         for (let index = 0; index < group.games.length; index++) {
             const game = group.games[index];
             let gameElement = section.querySelector(`[data-game-id="${game.id}"]`);
             
             if (!gameElement) {
-                // Создаем новый элемент (теперь это промис, поэтому await)
                 gameElement = await createGameElement(game);
                 
-                // Вставляем в правильную позицию
                 const nextGameElement = existingGameElements[index];
                 if (nextGameElement) {
                     section.insertBefore(gameElement, nextGameElement);
@@ -170,16 +168,14 @@ async function updateGamesList(games) {
                     section.appendChild(gameElement);
                 }
                 
-                // Анимация появления
                 gameElement.style.opacity = '0';
                 setTimeout(() => {
                     gameElement.style.transition = 'opacity 0.3s ease';
                     gameElement.style.opacity = '1';
                 }, 10);
             } else {
-                // Перемещаем существующий элемент если нужно
                 const currentPosition = Array.from(section.children).indexOf(gameElement);
-                const targetPosition = index + 1; // +1 из-за заголовка секции
+                const targetPosition = index + 1;
                 
                 if (currentPosition !== targetPosition) {
                     const nextElement = section.children[targetPosition];
@@ -188,12 +184,12 @@ async function updateGamesList(games) {
                     }
                 }
             }
-            // Показываем/скрываем по поиску
+            
             const isVisible = !state.searchTerm || 
                 game.title.toLowerCase().includes(state.searchTerm.toLowerCase());
             gameElement.style.display = isVisible ? 'flex' : 'none';
         }
-        // Удаляем элементы игр, которых больше нет в группе
+        
         existingGameElements.forEach(el => {
             const gameId = el.dataset.gameId;
             if (!group.games.find(g => g.id == gameId)) {
@@ -202,10 +198,10 @@ async function updateGamesList(games) {
                 setTimeout(() => el.remove(), 300);
             }
         });
-        // Скрываем секцию если нет видимых игр
+        
         section.style.display = visibleGames.length > 0 ? 'block' : 'none';
     }
-    // Удаляем секции, которых больше нет
+    
     existingSections.forEach(section => {
         const groupKey = section.dataset.group;
         if (!processedGroups.has(groupKey)) {
@@ -215,39 +211,49 @@ async function updateGamesList(games) {
         }
     });
 }
+
 // Выбор игры
 async function selectGame(gameId) {
     if (state.currentGameId === gameId) return;
     state.currentGameId = gameId;
+          
+    window.electronAPI.games.getFileSize(gameId)
+    .then(size => {
+        if (state.currentGameId === gameId) {
+            state.currentGameSize = size;
+        }
+    })
+    .catch(err => {
+        console.error('Failed to get file size:', err);
+        if (state.currentGameId === gameId) {
+            state.currentGameSize = null;
+        }
+    });
     
-    // Обновляем активный класс
     document.querySelectorAll('.game-item').forEach(item => {
         item.classList.toggle('active', item.dataset.gameId == gameId);
     });
-    // Загружаем данные игры
+    
     const game = state.games.find(g => g.id === gameId);
     if (!game) return;
-    // Обновляем заголовок и фон
+    
     const gameHeader = document.getElementById('game-header');
     const gameTitle = document.getElementById('game-title');
     
     gameTitle.textContent = game.title;
     
-    // Загружаем скриншоты асинхронно
     try {
         const screenshots = await window.electronAPI.games.getGameScreenshots(game.id);
         const logoURL = await window.electronAPI.games.getGameLogo(game.id);
         state.screenshots = screenshots || [];
         state.logo = logoURL || '';
         
-        // Используем первый скриншот как фон
         if (logoURL) {
             gameHeader.style.backgroundImage = `url('${logoURL}')`;
         } else {
             gameHeader.style.backgroundImage = '';
         }
         
-        // Если открыта вкладка со скриншотами, обновляем их
         if (state.activeTab === 'screenshots') {
             loadScreenshots();
         }
@@ -255,19 +261,35 @@ async function selectGame(gameId) {
         console.error('Ошибка загрузки скриншотов:', error);
         state.screenshots = [];
     }
-    // Обновляем информацию
-    document.getElementById('cloud-status').textContent = game.isInstalled ? 'Синхронизированы' : 'Не установлена';
+    
+    try {
+        const comments = await window.electronAPI.games.getGameComments(game.id);
+        state.comments = comments || [];
+        
+        if (state.activeTab === 'activity') {
+            loadComments();
+        }
+    } catch (error) {
+        console.error('Ошибка загрузки комментариев:', error);
+        state.comments = [];
+        if (state.activeTab === 'activity') {
+            loadComments();
+        }
+    }
+    
+    document.getElementById('cloud-status').textContent = "Не доступны";
     document.getElementById('last-play').textContent = game.lastPlayDate 
         ? formatDate(game.lastPlayDate) 
         : 'Никогда';
     document.getElementById('playtime').textContent = game.playtime 
         ? `${game.playtime} ч.` 
         : '0 ч.';
-    // Активируем кнопку играть
+    
     const playButton = document.getElementById('btn-play');
-    playButton.disabled = !game.isInstalled;
+    //playButton.disabled = !game.isInstalled;
     playButton.textContent = game.isInstalled ? '▶ ИГРАТЬ' : '📥 УСТАНОВИТЬ';
 }
+
 // Форматирование даты
 function formatDate(dateString) {
     if (!dateString) return 'Никогда';
@@ -276,6 +298,28 @@ function formatDate(dateString) {
                   'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
     return `${date.getDate()} ${months[date.getMonth()]}.`;
 }
+
+// Форматирование даты комментария
+function formatCommentDate(dateString) {
+    if (!dateString) return 'Неизвестно';
+    
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Только что';
+    if (diffMins < 60) return `${diffMins} мин. назад`;
+    if (diffHours < 24) return `${diffHours} ч. назад`;
+    if (diffDays < 7) return `${diffDays} дн. назад`;
+    
+    const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 
+                  'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+    return `${date.getDate()} ${months[date.getMonth()]}.`;
+}
+
 // Загрузка скриншотов
 function loadScreenshots() {
     const grid = document.getElementById('screenshots-grid');
@@ -290,47 +334,271 @@ function loadScreenshots() {
         </div>
     `).join('');
 }
+
+// Загрузка комментариев
+function loadComments() {
+    const container = document.getElementById('activity-content');
+    
+    if (state.comments.length === 0) {
+        container.innerHTML = '<h2>Лента активности</h2><div class="loading">Нет комментариев</div>';
+        return;
+    }
+    
+    const sortedComments = [...state.comments].sort((a, b) => 
+        new Date(b.created_at) - new Date(a.created_at)
+    );
+    const commentsHtml = sortedComments.map(comment => {
+        const date = formatCommentDate(comment.created_at);
+        return `
+            <div class="comment" data-comment-id="${comment.id}">
+                <div class="comment-header">
+                    <img src="${comment.avatar}" alt="Avatar" class="comment-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23444%22/%3E%3C/svg%3E'">
+                    <div class="comment-author">
+                        <div class="author-name">${comment.username}</div>
+                        <div class="comment-date">${date}</div>
+                    </div>
+                </div>
+                <div class="comment-text">${comment.content}</div>
+                <div class="comment-actions">
+                    <div class="comment-action">👍 0</div>
+                    <div class="comment-action">💬 Ответить</div>
+                    <div class="comment-action">⚠ Пожаловаться</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = `<h2>Лента активности</h2>${commentsHtml}`;
+}
+
 // Переключение табов
 function switchTab(tabName) {
     state.activeTab = tabName;
-    // Обновляем активный таб
+    
     document.querySelectorAll('.tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.tab === tabName);
     });
-    // Показываем нужный контент
+    
     document.getElementById('activity-content').style.display = 
         tabName === 'activity' ? 'block' : 'none';
     document.getElementById('screenshots-content').style.display = 
         tabName === 'screenshots' ? 'block' : 'none';
+    
     if (tabName === 'screenshots') {
         loadScreenshots();
+    } else if (tabName === 'activity') {
+        loadComments();
     }
 }
+
 // Поиск
 const searchInput = document.getElementById('lib-search');
 searchInput.addEventListener('input', (e) => {
     state.searchTerm = e.target.value;
     updateGamesList(state.games);
 });
+
 // Обработчики табов
 document.querySelectorAll('.tab').forEach(tab => {
     tab.addEventListener('click', () => {
         switchTab(tab.dataset.tab);
     });
 });
-// Кнопка играть
+
+// ============ Диалог установки ============
+
+async function createInstallDialog(game) {
+    // Удаляем существующий диалог если есть
+    const existing = document.getElementById('install-dialog');
+    if (existing) existing.remove();
+    
+    const dialog = document.createElement('div');
+    dialog.id = 'install-dialog';
+    dialog.className = 'install-dialog-overlay';
+    
+    dialog.innerHTML = `
+        <div class="install-dialog">
+            <div class="install-dialog-header">
+                <h2>Установить</h2>
+                <button class="close-dialog" onclick="closeInstallDialog()">✕</button>
+            </div>
+            
+            <div class="install-dialog-body">
+                <div class="game-info-preview">
+                    <img src="${state.logo || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23333%22 width=%22100%22 height=%22100%22/%3E%3C/svg%3E'}" 
+                         alt="${game.title}" class="game-preview-icon">
+                    <div class="game-preview-info">
+                        <div class="game-preview-title">${game.title}</div>
+                        <div class="game-preview-size">${state.currentGameSize?.formatted || "Неизвестно"}</div>
+                    </div>
+                </div>
+                
+                <div class="install-options">
+                    <label class="install-checkbox">
+                        <input type="checkbox" id="create-desktop-shortcut" checked>
+                        <span>Создать ярлык на рабочем столе</span>
+                    </label>
+                    
+                    <label class="install-checkbox">
+                        <input type="checkbox" id="create-start-menu-shortcut" checked>
+                        <span>Создать ярлык в меню «Пуск»</span>
+                    </label>
+                </div>
+                
+                <div class="install-location-section">
+                    <div class="section-title">УСТАНОВИТЬ НА:</div>
+                    <div class="drives-list" id="drives-list">
+                        <div class="loading">Загрузка дисков...</div>
+                    </div>
+                    <div class="space-warning" id="space-warning" style="display: none;">
+                        ⚠ НЕДОСТАТОЧНО МЕСТА
+                    </div>
+                </div>
+            </div>
+            
+            <div class="install-dialog-footer">
+                <button class="btn-secondary" onclick="closeInstallDialog()">Отмена</button>
+                <button class="btn-primary" id="confirm-install" disabled>Установить</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Загружаем доступные диски
+    loadAvailableDrives(game);
+    
+    // Обработчик кнопки установки
+    document.getElementById('confirm-install').addEventListener('click', () => {
+        const selectedDrive = document.querySelector('.drive-option.selected');
+        if (!selectedDrive) return;
+        
+        const installParams = {
+            gameId: game.id,
+            gameTitle: game.title,
+            drivePath: selectedDrive.dataset.path,
+            driveLetter: selectedDrive.dataset.letter,
+            createDesktopShortcut: document.getElementById('create-desktop-shortcut').checked,
+            createStartMenuShortcut: document.getElementById('create-start-menu-shortcut').checked
+        };
+        
+        startGameInstallation(installParams);
+        
+        closeInstallDialog();
+    });
+}
+
+// Загрузка доступных дисков
+async function loadAvailableDrives(game) {
+    const drivesList = document.getElementById('drives-list');
+    
+    try {
+        /*
+        const drives = [
+            { letter: 'D:', path: 'D:\\', label: 'Локальный диск', free: 39.26, type: 'hdd' },
+            { letter: 'G:', path: 'G:\\', label: 'HDD 1 TB', free: 141.91, type: 'hdd' },
+            { letter: 'H:', path: 'H:\\', label: 'SSD 256', free: 112.77, type: 'ssd' },
+            { letter: 'E:', path: 'E:\\', label: 'Локальный диск', free: 180.75, type: 'ssd' }
+        ];
+        */
+        const drives = await window.electronAPI.os.getDriveInfo();
+        
+        state.availableDrives = drives;
+        
+        const gameSize = parseFloat(state.currentGameSize?.gb) || Infinity;
+        
+        drivesList.innerHTML = drives.map(drive => {
+            const hasEnoughSpace = drive.free >= gameSize;
+            const icon = drive.type === 'ssd' ? '⚡' : drive.type === 'hdd' ? '💾' : '💿';
+            const favoriteIcon = drive.isFavorite ? '⭐' : '';
+            
+            return `
+                <div class="drive-option ${!hasEnoughSpace ? 'disabled' : ''} ${drive.isFavorite ? 'selected' : ''}" 
+                     data-path="${drive.path}" 
+                     data-letter="${drive.letter}"
+                     onclick="selectDrive(this, ${hasEnoughSpace})">
+                    <div class="drive-icon">${icon}</div>
+                    <div class="drive-info">
+                        <div class="drive-name">
+                            ${favoriteIcon} ${drive.label} (${drive.letter})
+                        </div>
+                        <div class="drive-space ${!hasEnoughSpace ? 'insufficient' : ''}">
+                            ДОСТУПНО ${drive.free.toFixed(2)} ГБ
+                        </div>
+                    </div>
+                    ${!hasEnoughSpace ? '<div class="insufficient-badge">⚠ НЕДОСТАТОЧНО МЕСТА</div>' : ''}
+                </div>
+            `;
+        }).join('');
+        
+        // Проверяем есть ли хоть один подходящий диск
+        const hasValidDrive = drives.some(d => d.free >= gameSize);
+        document.getElementById('confirm-install').disabled = !hasValidDrive;
+        
+        if (!hasValidDrive) {
+            document.getElementById('space-warning').style.display = 'flex';
+        }
+        
+    } catch (error) {
+        console.error('Ошибка загрузки дисков:', error);
+        drivesList.innerHTML = '<div class="loading">Ошибка загрузки дисков</div>';
+    }
+}
+
+// Выбор диска
+window.selectDrive = function(element, hasEnoughSpace) {
+    if (!hasEnoughSpace) return;
+    
+    document.querySelectorAll('.drive-option').forEach(opt => {
+        opt.classList.remove('selected');
+    });
+    
+    element.classList.add('selected');
+    document.getElementById('confirm-install').disabled = false;
+}
+
+// Закрытие диалога
+window.closeInstallDialog = function() {
+    const dialog = document.getElementById('install-dialog');
+    if (dialog) {
+        dialog.style.opacity = '0';
+        setTimeout(() => dialog.remove(), 200);
+    }
+}
+
+// Функция установки игры (пока пустая - для будущей реализации)
+function startGameInstallation(params) {
+    console.log('Начало установки игры с параметрами:', params);
+    
+    // Здесь будет логика установки:
+    // - Создание папки игры
+    // - Скачивание файлов
+    // - Создание ярлыков
+    // - Обновление базы данных
+    
+    // TODO: Реализовать установку
+}
+
+// ============ КОНЕЦ НОВОГО КОДА ============
+
+// Кнопка играть/установить
 document.getElementById('btn-play').addEventListener('click', async () => {
     if (!state.currentGameId) return;
-    
+
     const game = state.games.find(g => g.id === state.currentGameId);
-    if (!game || !game.isInstalled) return;
-    // Здесь будет вызов запуска игры
+    if (!game) return;
+
+    // Если игра не установлена - показываем диалог установки
+    if (!game.isInstalled) {
+        await createInstallDialog(game);
+        return;
+    }
+    
+    // Если игра установлена - запускаем
     console.log('Запуск игры:', game.title);
     
-    // Обновляем lastPlayDate
     game.lastPlayDate = new Date().toISOString();
     
-    // Плавно перемещаем игру в "Недавнее" без полной перерисовки
     const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
     if (gameElement) {
         gameElement.classList.add('moving');
@@ -340,50 +608,59 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         }, 200);
     }
 });
+
 // Инициализация - загрузка игр
 async function init() {
-    // Показываем сообщение загрузки
     const container = document.getElementById('games-list');
     container.innerHTML = '<div class="loading">Загрузка игр...</div>';
+    
     try {
-        const games = await window.electronAPI.games.getAllGames();
+        // Проверяем наличие Electron API
+        let games;
+        if (window.electronAPI && window.electronAPI.games) {
+            games = await window.electronAPI.games.getAllGames();
+        } else {
+            games = [];
+        }
         
         if (!games || games.length === 0) {
             container.innerHTML = '<div class="loading">Игры не найдены</div>';
             return;
         }
+        
         state.games = games.sort((a, b) => {
             const dateA = a.lastPlayDate ? new Date(a.lastPlayDate) : new Date(0);
             const dateB = b.lastPlayDate ? new Date(b.lastPlayDate) : new Date(0);
             return dateB - dateA;
         });
+        
         await updateGamesList(state.games);
-        // Выбираем первую игру по умолчанию
+        
         if (state.games.length > 0) {
             selectGame(state.games[0].id);
         }
-        // Начинаем периодическую проверку новых игр
+        
         startGameWatcher();
     } catch (error) {
         console.error('Ошибка загрузки игр:', error);
         container.innerHTML = '<div class="loading">Ошибка загрузки игр</div>';
     }
 }
+
 // Наблюдатель за новыми играми
 let watcherInterval = null;
 
 function startGameWatcher() {
-    // Проверяем каждые 5 секунд
     watcherInterval = setInterval(async () => {
         try {
             const games = await window.electronAPI.games.getAllGames();
             
             if (!games) return;
-            // Проверяем, есть ли новые игры
+            
             const newGames = games.filter(game => 
                 !state.games.find(g => g.id === game.id)
             );
-            // Проверяем, были ли обновления в существующих играх
+            
             const updatedGames = games.filter(game => {
                 const existingGame = state.games.find(g => g.id === game.id);
                 if (!existingGame) return false;
@@ -392,19 +669,20 @@ function startGameWatcher() {
                        existingGame.playtime !== game.playtime ||
                        existingGame.isInstalled !== game.isInstalled;
             });
+            
             if (newGames.length > 0 || updatedGames.length > 0) {
-                // Обновляем состояние
                 state.games = games.sort((a, b) => {
                     const dateA = a.lastPlayDate ? new Date(a.lastPlayDate) : new Date(0);
                     const dateB = b.lastPlayDate ? new Date(b.lastPlayDate) : new Date(0);
                     return dateB - dateA;
                 });
-                // Плавно обновляем UI
+                
                 await updateGamesList(state.games);
-                // Если текущая игра была обновлена, обновляем её информацию
+                
                 if (state.currentGameId && updatedGames.find(g => g.id === state.currentGameId)) {
                     await selectGame(state.currentGameId);
                 }
+                
                 console.log(`Обнаружено изменений: ${newGames.length} новых, ${updatedGames.length} обновленных`);
             }
         } catch (error) {
@@ -412,11 +690,11 @@ function startGameWatcher() {
         }
     }, 5000);
 }
-// Останавливаем наблюдатель при закрытии страницы
+
 window.addEventListener('beforeunload', () => {
     if (watcherInterval) {
         clearInterval(watcherInterval);
     }
 });
-// Запуск при загрузке страницы
+
 init();

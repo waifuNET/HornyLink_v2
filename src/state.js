@@ -1,8 +1,13 @@
 const fs = require('fs');
 const path = require('path');
+const { getFileSize } = require('./logic/other/download');
 
 const { hasInternetConnection } = require('./utils/internetUtils');
 const { applicationSettingsPath } = require('./cfg');
+
+class AppVariables {
+  static driveInfo = null;
+}
 
 class LocalUserBase{
     static id = null;
@@ -51,6 +56,7 @@ class LocalUserBase{
 
 class GameCollection {
   static games = [];
+  static comments = [];
 
   static addGame(game) {
     if (!game.id) {
@@ -87,6 +93,24 @@ class GameCollection {
         return logoImage;
     } else {
         return images[0];
+    }
+  }
+
+  static async getGameSize(id){
+    const game = this.games.find(g => g.id === id);
+
+    if (!game) {
+        return null;
+    }
+
+    const { storage_url, download_link } = game;
+
+    try{
+      const fileSize = await getFileSize(`${storage_url}/${download_link}`);
+      return fileSize;
+    }
+    catch{
+      return null;
     }
   }
 
@@ -207,6 +231,106 @@ class GameCollection {
     try {
       const parsed = JSON.parse(jsonString);
       this.loadGames(parsed);
+    } catch (error) {
+      throw new Error('Invalid JSON format');
+    }
+  }
+
+  // ===== МЕТОДЫ ДЛЯ РАБОТЫ С КОММЕНТАРИЯМИ =====
+
+  static addComment(comment) {
+    if (!comment.id) {
+      throw new Error('Comment must have an id');
+    }
+    if (!comment.game_id) {
+      throw new Error('Comment must have a game_id');
+    }
+    
+    const existingIndex = this.comments.findIndex(c => c.id === comment.id);
+    if (existingIndex !== -1) {
+      throw new Error(`Comment with id ${comment.id} already exists`);
+    }
+    
+    this.comments.push(comment);
+    return comment;
+  }
+
+  static getCommentById(commentId) {
+    return this.comments.find(comment => comment.id === commentId) || null;
+  }
+
+  static getCommentsByGameId(gameId) {
+    return this.comments.filter(comment => comment.game_id === gameId);
+  }
+
+  static getAllComments() {
+    return [...this.comments];
+  }
+
+  static deleteComment(commentId) {
+    const index = this.comments.findIndex(comment => comment.id === commentId);
+    if (index === -1) {
+      return false;
+    }
+    
+    this.comments.splice(index, 1);
+    return true;
+  }
+
+  static deleteCommentsByGameId(gameId) {
+    const initialLength = this.comments.length;
+    this.comments = this.comments.filter(comment => comment.game_id !== gameId);
+    return initialLength - this.comments.length;
+  }
+
+  static updateComment(commentId, updates) {
+    const index = this.comments.findIndex(comment => comment.id === commentId);
+    if (index === -1) {
+      return null;
+    }
+    
+    // Запрещаем изменение ID и game_id
+    if (updates.id && updates.id !== commentId) {
+      throw new Error('Cannot change comment ID');
+    }
+    if (updates.game_id && updates.game_id !== this.comments[index].game_id) {
+      throw new Error('Cannot change comment game_id');
+    }
+    
+    this.comments[index] = { ...this.comments[index], ...updates };
+    return this.comments[index];
+  }
+
+  static getCommentsByUserId(userId) {
+    return this.comments.filter(comment => comment.user_id === userId);
+  }
+
+  static getCommentsCount(gameId = null) {
+    if (gameId === null) {
+      return this.comments.length;
+    }
+    return this.comments.filter(comment => comment.game_id === gameId).length;
+  }
+
+  static clearComments() {
+    this.comments = [];
+  }
+
+  static loadComments(commentsArray) {
+    if (!Array.isArray(commentsArray)) {
+      throw new Error('Input must be an array');
+    }
+    this.comments = [...commentsArray];
+  }
+
+  static commentsToJSON() {
+    return JSON.stringify(this.comments, null, 2);
+  }
+
+  static commentsFromJSON(jsonString) {
+    try {
+      const parsed = JSON.parse(jsonString);
+      this.loadComments(parsed);
     } catch (error) {
       throw new Error('Invalid JSON format');
     }
@@ -371,5 +495,6 @@ module.exports = {
     LocalUserBase,
     LanguageVariables,
     ApplicationSettings,
-    GameCollection
+    GameCollection,
+    AppVariables
 };

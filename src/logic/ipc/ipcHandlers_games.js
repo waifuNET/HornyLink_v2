@@ -1,5 +1,6 @@
 const { ipcMain } = require('electron');
 const { GameCollection } = require('../../state')
+const Games = require('../games/games')
 
 function setupIpcHandlers_games() {
     ipcMain.handle('get-all-games', (event) => {
@@ -20,6 +21,15 @@ function setupIpcHandlers_games() {
 
     ipcMain.handle('get-game-icon', (event, id) => {
         return GameCollection.getGameIcon(id);
+    });
+
+    ipcMain.handle('get-game-comments', async (event, gameId) =>{
+        const comments = await Games.loadComments(gameId);
+        return comments;
+    });
+
+    ipcMain.handle('get-file-size', async (event, gameId) => {
+        return GameCollection.getGameSize(gameId);
     });
 }
 

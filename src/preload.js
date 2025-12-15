@@ -22,6 +22,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getGameLogo: (id) => ipcRenderer.invoke('get-game-logo', id),
         getGameScreenshots: (id) => ipcRenderer.invoke('get-game-screenshots', id),
         getGameIcon: (id) => ipcRenderer.invoke('get-game-icon', id),
+        getGameComments: (gameId) => ipcRenderer.invoke('get-game-comments', gameId),
+        getFileSize: (gameId) => ipcRenderer.invoke('get-file-size', gameId),
+    },
+
+    os:{
+        getDriveInfo: () => ipcRenderer.invoke('get-drive-info'),
     },
 
     // CFG

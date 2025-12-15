@@ -313,11 +313,12 @@
     font-size: 12px;
     color: var(--text-dim);
 }
-.activity-content {
+#activity-content {
     font-size: 14px;
     line-height: 1.6;
     color: var(--text-secondary);
     margin-bottom: 12px;
+    padding-bottom: 20px;
 }
 .activity-content strong {
     color: var(--text-primary);
@@ -472,4 +473,309 @@
     text-align: center;
     padding: 20px;
     color: #999;
+}
+/* Модальное окно установки */
+.install-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    opacity: 1;
+    transition: opacity var(--transition-fast);
+}
+
+.install-dialog {
+    background: var(--bg-container);
+    border-radius: var(--border-radius-medium);
+    width: 90%;
+    max-width: 620px;
+    max-height: 90vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: var(--shadow-modal);
+}
+
+.install-dialog-header {
+    padding: var(--spacing-lg);
+    background: var(--bg-page);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-primary);
+}
+
+.install-dialog-header h2 {
+    margin: 0;
+    font-size: 18px;
+    color: var(--text-primary);
+}
+
+.close-dialog {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: var(--border-radius);
+    transition: all var(--transition-fast);
+}
+
+.close-dialog:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.install-dialog-body {
+    padding: var(--spacing-lg);
+    overflow-y: auto;
+    flex: 1;
+}
+
+.game-info-preview {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-page);
+    border-radius: var(--border-radius);
+    margin-bottom: var(--spacing-lg);
+}
+
+.game-preview-icon {
+    width: auto;
+    height: 80px;
+    border-radius: var(--border-radius);
+    object-fit: cover;
+}
+
+.game-preview-info {
+    flex: 1;
+}
+
+.game-preview-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: var(--spacing-xs);
+}
+
+.game-preview-size {
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.install-options {
+    display: flex;
+    margin-bottom: var(--spacing-xl);
+}
+
+.install-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    cursor: pointer;
+    border-radius: var(--border-radius);
+    transition: background var(--transition-fast);
+    user-select: none;
+}
+
+.install-checkbox:hover {
+    background: var(--bg-hover);
+}
+
+.install-checkbox input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: var(--accent-primary);
+}
+
+.install-checkbox span {
+    color: var(--text-primary);
+    font-size: 14px;
+}
+
+.install-location-section {
+    margin-top: var(--spacing-lg);
+}
+
+.section-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-md);
+    letter-spacing: 0.5px;
+}
+
+.drives-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-sm);
+}
+
+.drive-option {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-md);
+    padding: var(--spacing-md);
+    background: var(--bg-page);
+    border: 2px solid transparent;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.drive-option:not(.disabled):hover {
+    background: var(--bg-input);
+    border-color: var(--border-primary);
+}
+
+.drive-option.selected {
+    background: var(--bg-input);
+    border-color: var(--accent-primary);
+}
+
+.drive-option.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.drive-icon {
+    font-size: 24px;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-input);
+    border-radius: var(--border-radius);
+}
+
+.drive-info {
+    flex: 1;
+}
+
+.drive-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+}
+
+.drive-space {
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.drive-space.insufficient {
+    color: var(--text-error);
+}
+
+.insufficient-badge {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: var(--text-error);
+    color: var(--text-primary);
+    padding: 4px 8px;
+    border-radius: var(--border-radius);
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.space-warning {
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+    padding: var(--spacing-md);
+    background: rgba(255, 136, 136, 0.1);
+    border: 1px solid var(--text-error);
+    border-radius: var(--border-radius);
+    color: var(--text-error);
+    font-size: 13px;
+    font-weight: 600;
+    margin-top: var(--spacing-md);
+}
+
+.install-dialog-footer {
+    padding: var(--spacing-md) var(--spacing-lg);
+    background: var(--bg-page);
+    border-top: 1px solid var(--border-primary);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--spacing-sm);
+}
+
+.btn-primary, .btn-secondary {
+    padding: var(--spacing-sm) var(--spacing-lg);
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-primary {
+    background: var(--accent-primary);
+    color: var(--text-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+    background: var(--accent-primary-hover);
+}
+
+.btn-primary:active:not(:disabled) {
+    background: var(--accent-primary-active);
+}
+
+.btn-primary:disabled {
+    background: var(--bg-input);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.btn-secondary {
+    background: var(--bg-button-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+}
+
+.btn-secondary:hover {
+    background: var(--bg-hover);
+    border-color: var(--accent-blue);
+}
+
+/* Скроллбар для диалога */
+.install-dialog-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.install-dialog-body::-webkit-scrollbar-track {
+    background: var(--bg-page);
+}
+
+.install-dialog-body::-webkit-scrollbar-thumb {
+    background: var(--bg-input);
+    border-radius: var(--border-radius);
+}
+
+.install-dialog-body::-webkit-scrollbar-thumb:hover {
+    background: var(--bg-input-focus);
 }
