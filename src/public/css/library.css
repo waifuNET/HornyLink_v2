@@ -1,7 +1,9 @@
 #lib-content {
     display: flex;
     width: 100%;
-    height: 100vh;
+    flex: 1;
+    min-height: 0;
+    
     overflow: hidden;
 }
 #lib-left {
@@ -32,7 +34,7 @@
     position: absolute;
     left: 12px;
     color: var(--text-secondary);
-    font-size: 16px;
+    font-size: var(--font-size);
     pointer-events: none;
 }
 #lib-search {
@@ -146,8 +148,65 @@
     color: white;
     border: none;
     padding: 12px 30px;
+
     border-radius: var(--border-radius);
-    font-size: 16px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+
+    font-size: var(--font-size);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color var(--transition-fast);
+}
+.btn-install {
+    background-color: #0079ff;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+
+    border-radius: var(--border-radius);
+
+    font-size: var(--font-size);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color var(--transition-fast);
+}
+.btn-cansel {
+    background-color: #b30000;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+
+    border-radius: var(--border-radius);
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+
+    font-size: var(--font-size);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color var(--transition-fast);
+}
+.btn-pause {
+    background-color: #0079ff;
+    color: white;
+    border: none;
+    padding: 12px 30px;
+    margin-left: 2px;
+
+    border-radius: var(--border-radius);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+
+    font-size: var(--font-size);
     font-weight: 600;
     cursor: pointer;
     display: flex;
@@ -778,4 +837,92 @@
 
 .install-dialog-body::-webkit-scrollbar-thumb:hover {
     background: var(--bg-input-focus);
+}
+.game-play-btns{
+    display: flex;
+}
+.btn-more {
+    background-color: #5cb85f;
+    color: white;
+    border: none;
+    margin-left: 2px;
+
+    border-radius: var(--border-radius);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+
+    font-size: var(--font-size);
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background-color var(--transition-fast);
+}
+#footer {
+    height: var(--footer-height);
+    width: 100%;
+    background-color: var(--bg-container);
+    border-top: 1px solid var(--border-primary);
+    
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-sizing: border-box;
+    
+    flex-shrink: 0;
+    z-index: 50;
+}
+
+.download-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-dim);
+    transition: color 0.3s ease;
+    width: 100%;
+    justify-content: center;
+}
+
+.status-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+}
+
+.status-icon svg {
+    width: 20px;
+    height: 20px;
+    transition: transform 0.3s ease;
+}
+
+.status-info {
+    font-size: 13px;
+    font-weight: 500;
+    display: flex;
+    flex-direction: column;
+}
+
+.game-highlight {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.download-status.active {
+    color: var(--accent-primary);
+}
+
+.download-status.active .status-icon svg {
+    animation: bounceDownload 1.5s infinite;
+}
+
+.status-text{
+    color: var(--text-primary);
+}
+
+@keyframes bounceDownload {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(3px); }
 }

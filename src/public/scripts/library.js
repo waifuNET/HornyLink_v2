@@ -8,7 +8,7 @@ const state = {
     screenshots: [],
     logo: '',
     comments: [],
-    availableDrives: [] // Доступные диски для установки
+    availableDrives: [],
 };
 
 // Группировка игр по периодам
@@ -213,14 +213,15 @@ async function updateGamesList(games) {
 }
 
 // Выбор игры
-async function selectGame(gameId) {
-    if (state.currentGameId === gameId) return;
+async function selectGame(gameId, forceReonen = false) {
+    if (state.currentGameId === gameId && !forceReonen) return;
     state.currentGameId = gameId;
           
     window.electronAPI.games.getFileSize(gameId)
     .then(size => {
         if (state.currentGameId === gameId) {
             state.currentGameSize = size;
+            console.log(size)
         }
     })
     .catch(err => {
@@ -236,11 +237,23 @@ async function selectGame(gameId) {
     
     const game = state.games.find(g => g.id === gameId);
     if (!game) return;
+
+    console.log(game);
     
     const gameHeader = document.getElementById('game-header');
     const gameTitle = document.getElementById('game-title');
     
     gameTitle.textContent = game.title;
+
+    document.getElementById('cloud-status').textContent = "Не доступны";
+    document.getElementById('last-play').textContent = game.lastPlayDate 
+        ? formatDate(game.lastPlayDate) 
+        : 'Никогда';
+    document.getElementById('playtime').textContent = game.playtime 
+        ? `${game.playtime} ч.` 
+        : '0 ч.';
+
+    await mainButtonsController(gameId);
     
     try {
         const screenshots = await window.electronAPI.games.getGameScreenshots(game.id);
@@ -277,17 +290,6 @@ async function selectGame(gameId) {
         }
     }
     
-    document.getElementById('cloud-status').textContent = "Не доступны";
-    document.getElementById('last-play').textContent = game.lastPlayDate 
-        ? formatDate(game.lastPlayDate) 
-        : 'Никогда';
-    document.getElementById('playtime').textContent = game.playtime 
-        ? `${game.playtime} ч.` 
-        : '0 ч.';
-    
-    const playButton = document.getElementById('btn-play');
-    //playButton.disabled = !game.isInstalled;
-    playButton.textContent = game.isInstalled ? '▶ ИГРАТЬ' : '📥 УСТАНОВИТЬ';
 }
 
 // Форматирование даты
@@ -566,20 +568,68 @@ window.closeInstallDialog = function() {
     }
 }
 
+async function mainButtonsController(gameId){
+    const game = state.games.find(g => g.id === gameId);
+
+    const playButton = document.getElementById('btn-play');
+    const moreButton = document.getElementById('btn-more');
+    const canselButton = document.getElementById('btn-cansel');
+    const pauseButton = document.getElementById('btn-pause');
+
+    if(game.isInstalled){
+        playButton.textContent = '► ИГРАТЬ';
+        playButton.className = 'btn-play';
+        moreButton.style.visibility = 'visible';
+    }
+    else{
+        playButton.textContent = '📥 УСТАНОВИТЬ';
+        playButton.className = 'btn-install';
+        moreButton.style.visibility = 'hidden';
+    }
+
+    const downloadingGame = await window.electronAPI.games.getCurrentDownloadProgress();
+    const status = await window.electronAPI.games.status(gameId);
+
+    if(downloadingGame.gameId == gameId){
+        playButton.style.display = 'none';
+
+        canselButton.style.display = 'flex';
+        pauseButton.style.display = 'flex';
+    }
+    else{
+        playButton.style.display = 'flex';
+
+        canselButton.style.display = 'none';
+        pauseButton.style.display = 'none';
+    }
+
+    if(downloadingGame.downloadGamePause){
+        pauseButton.innerHTML = "▶️ ПРОДОЛЖИТЬ"
+    }
+    else{
+        pauseButton.innerHTML = "⏸️ ПАУЗА"
+    }
+
+    if(status.gameIsRunning){
+        playButton.style.display = 'flex';
+        playButton.innerHTML = "❌ ЗАКРЫТЬ"
+        playButton.className = 'btn-pause';
+    }
+}
+
 // Функция установки игры (пока пустая - для будущей реализации)
 function startGameInstallation(params) {
     console.log('Начало установки игры с параметрами:', params);
-    
-    // Здесь будет логика установки:
-    // - Создание папки игры
-    // - Скачивание файлов
-    // - Создание ярлыков
-    // - Обновление базы данных
-    
-    // TODO: Реализовать установку
-}
+    window.electronAPI.games.downloadGame(
+        params.createDesktopShortcut,
+        params.createStartMenuShortcut,
+        params.drivePath,
+        params.gameId,
+        params.gameTitle
+    );
 
-// ============ КОНЕЦ НОВОГО КОДА ============
+    mainButtonsController(params.gameId);
+}
 
 // Кнопка играть/установить
 document.getElementById('btn-play').addEventListener('click', async () => {
@@ -594,10 +644,21 @@ document.getElementById('btn-play').addEventListener('click', async () => {
         return;
     }
     
-    // Если игра установлена - запускаем
+    // Если игра установлена
+    const status = await window.electronAPI.games.status(game.id);
+    if(status.gameIsRunning){
+        await window.electronAPI.games.closeGame(game.id);
+        await updateInfo();
+        await mainButtonsController(game.id);
+        return;
+    }
+
     console.log('Запуск игры:', game.title);
     
     game.lastPlayDate = new Date().toISOString();
+
+    window.electronAPI.games.launchGame(game.id);
+    await mainButtonsController(game.id);
     
     const gameElement = document.querySelector(`[data-game-id="${game.id}"]`);
     if (gameElement) {
@@ -609,37 +670,84 @@ document.getElementById('btn-play').addEventListener('click', async () => {
     }
 });
 
+// Pause/Resume
+document.getElementById('btn-pause').addEventListener('click', async () => {
+    if (!state.currentGameId) return;
+
+    const game = state.games.find(g => g.id === state.currentGameId);
+    if (!game) return;
+
+    const downloadingGame = await window.electronAPI.games.getCurrentDownloadProgress();
+    if(downloadingGame.downloadGamePause){
+        await window.electronAPI.games.resumeDownloading();
+    }
+    else{
+        await window.electronAPI.games.pauseDownloading();
+    }
+
+    await mainButtonsController(game.id);
+});
+
+document.getElementById('btn-cansel').addEventListener('click', async () => {
+    if (!state.currentGameId) return;
+
+    const game = state.games.find(g => g.id === state.currentGameId);
+    if (!game) return;
+
+    await window.electronAPI.games.canselDownloading(game.id);
+
+    await mainButtonsController(game.id);
+});
+
+async function updateInfo(){
+    await InitGamesState(true);
+        if(state.currentGameId){
+            await selectGame(state.currentGameId, true);
+        }
+}
+
+// Event subscrabers //
+window.electronAPI.games.universalEvent(async (value) => {
+    switch(value.event){
+        case "gameInstalled":
+            await updateInfo();
+        break;
+    }
+});
+
+async function InitGamesState(stayOnOpenGame = false){
+    let games;
+    if (window.electronAPI && window.electronAPI.games) {
+        games = await window.electronAPI.games.getAllGames();
+    } else {
+        games = [];
+    }
+
+    if (!games || games.length === 0) {
+        container.innerHTML = '<div class="loading">Игры не найдены</div>';
+        return;
+    }
+
+    state.games = games.sort((a, b) => {
+        const dateA = a.lastPlayDate ? new Date(a.lastPlayDate) : new Date(0);
+        const dateB = b.lastPlayDate ? new Date(b.lastPlayDate) : new Date(0);
+        return dateB - dateA;
+    });
+
+    await updateGamesList(state.games);
+
+    if (!stayOnOpenGame && state.games.length > 0) {
+        selectGame(state.games[0].id);
+    }
+}
+
 // Инициализация - загрузка игр
 async function init() {
     const container = document.getElementById('games-list');
     container.innerHTML = '<div class="loading">Загрузка игр...</div>';
     
     try {
-        // Проверяем наличие Electron API
-        let games;
-        if (window.electronAPI && window.electronAPI.games) {
-            games = await window.electronAPI.games.getAllGames();
-        } else {
-            games = [];
-        }
-        
-        if (!games || games.length === 0) {
-            container.innerHTML = '<div class="loading">Игры не найдены</div>';
-            return;
-        }
-        
-        state.games = games.sort((a, b) => {
-            const dateA = a.lastPlayDate ? new Date(a.lastPlayDate) : new Date(0);
-            const dateB = b.lastPlayDate ? new Date(b.lastPlayDate) : new Date(0);
-            return dateB - dateA;
-        });
-        
-        await updateGamesList(state.games);
-        
-        if (state.games.length > 0) {
-            selectGame(state.games[0].id);
-        }
-        
+        await InitGamesState();
         startGameWatcher();
     } catch (error) {
         console.error('Ошибка загрузки игр:', error);

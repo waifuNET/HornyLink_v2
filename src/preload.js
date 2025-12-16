@@ -24,6 +24,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getGameIcon: (id) => ipcRenderer.invoke('get-game-icon', id),
         getGameComments: (gameId) => ipcRenderer.invoke('get-game-comments', gameId),
         getFileSize: (gameId) => ipcRenderer.invoke('get-file-size', gameId),
+        downloadGame: (createDesktopShortcut, createStartMenuShortcut, drivePath, gameId, gameTitle) => ipcRenderer.invoke('download-game', createDesktopShortcut, createStartMenuShortcut, drivePath, gameId, gameTitle),
+        
+        pauseDownloading: (gameId) => ipcRenderer.invoke('pause-downloading-game', gameId),
+        canselDownloading: (gameId) => ipcRenderer.invoke('cansel-downloading-game', gameId),
+        resumeDownloading: (gameId) => ipcRenderer.invoke('resume-downloading-game', gameId),
+
+        closeGame: (gameId) => ipcRenderer.invoke('close-game', gameId),
+        launchGame: (gameId) => ipcRenderer.invoke('launch-game', gameId),
+
+        status: (gameId) => ipcRenderer.invoke('status', gameId),
+        
+        getCurrentDownloadProgress: () => ipcRenderer.invoke('get-current-download-progress'),
+
+        // Events //
+        universalEvent: (callback) => ipcRenderer.on('callback-universal', (event, value) => {
+            callback(value);
+        }),
     },
 
     os:{

@@ -1,26 +1,126 @@
-// master-client.js - Клиент с многопоточной загрузкой и возобновлением
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const AdmZip = require('adm-zip');
 
-const { SERVER_URL } = require('../../cfg')
+const { SERVER_URL } = require('../../cfg');
 
-const OUTPUT_DIR = './downloads';
-const TEMP_DIR = './downloads/.temp';
 const CHUNK_SIZE = 4 * 1024 * 1024; // 4 МБ
 const PARALLEL_CHUNKS = 5; // Скачивать 5 кусков одновременно
+const MAX_CHUNK_RETRIES = 10; // Максимум попыток для каждого куска
+const RETRY_DELAY_MS = 5000; // Начальная задержка между попытками
+
+// Колбэк для прогресса
+let progressCallback = null;
+
+function setProgressCallback(callback) {
+  progressCallback = callback;
+}
+
+function updateProgress(progress) {
+  if (progressCallback) {
+    progressCallback(progress);
+  }
+}
+
+class DownloadController {
+  constructor() {
+    this.isPaused = false;
+    this.isStopped = false;
+    this.activeRequests = new Set();
+  }
+
+  pause() {
+    console.log('\n⏸  Загрузка приостановлена');
+    this.isPaused = true;
+  }
+
+  resume() {
+    console.log('\n▶  Загрузка возобновлена');
+    this.isPaused = false;
+  }
+
+  stop() {
+    console.log('\n⏹  Загрузка остановлена');
+    this.isStopped = true;
+    this.isPaused = false;
+    
+    // Отменяем все активные запросы
+    this.activeRequests.forEach(controller => {
+      try {
+        controller.abort();
+      } catch (e) {
+        // Игнорируем ошибки отмены
+      }
+    });
+    this.activeRequests.clear();
+  }
+
+  reset() {
+    this.isPaused = false;
+    this.isStopped = false;
+    this.activeRequests.clear();
+  }
+
+  async waitIfPaused() {
+    while (this.isPaused && !this.isStopped) {
+      await delay(100);
+    }
+  }
+
+  checkStopped() {
+    if (this.isStopped) {
+      throw new Error('DOWNLOAD_STOPPED');
+    }
+  }
+
+  addRequest(controller) {
+    this.activeRequests.add(controller);
+  }
+
+  removeRequest(controller) {
+    this.activeRequests.delete(controller);
+  }
+}
+
+// Глобальный контроллер загрузки
+const downloadController = new DownloadController();
+
+// Публичные функции управления
+function pauseDownload() {
+  downloadController.pause();
+}
+
+function resumeDownload() {
+  downloadController.resume();
+}
+
+function stopDownload() {
+  downloadController.stop();
+}
+
+function isDownloadPaused() {
+  return downloadController.isPaused;
+}
+
+function isDownloadStopped() {
+  return downloadController.isStopped;
+}
+
+// ============================================================================
 
 // Состояние загрузки
 class DownloadState {
-  constructor(fileKey, fileInfo) {
+  constructor(fileKey, fileInfo, tempDir) {
     this.fileKey = fileKey;
     this.fileInfo = fileInfo;
     this.totalSize = fileInfo.size;
     this.expectedHash = fileInfo.hash;
     this.chunks = [];
     this.completed = [];
-    this.stateFile = path.join(TEMP_DIR, `${this.getSafeFileName()}.state.json`);
+    this.tempDir = tempDir;
+    this.stateFile = path.join(tempDir, `download.state.json`);
     
     // Вычисляем куски
     const totalChunks = Math.ceil(this.totalSize / CHUNK_SIZE);
@@ -32,13 +132,9 @@ class DownloadState {
         start, 
         end, 
         downloaded: false,
-        tempFile: path.join(TEMP_DIR, `${this.getSafeFileName()}.chunk${i}`)
+        tempFile: path.join(tempDir, `chunk_${i}`)
       });
     }
-  }
-  
-  getSafeFileName() {
-    return this.fileKey.replace(/[^a-zA-Z0-9._-]/g, '_');
   }
   
   // Загрузка состояния из файла
@@ -113,6 +209,10 @@ class DownloadState {
         this.completed.push(chunkId);
       }
       this.saveState();
+      
+      // Обновляем прогресс (0-50% - загрузка)
+      const downloadProgress = (this.completed.length / this.chunks.length) * 50;
+      updateProgress(downloadProgress);
     }
   }
   
@@ -133,66 +233,164 @@ class DownloadState {
   }
 }
 
-// Скачивание одного куска
-async function downloadChunk(fileKey, chunk, retries = 3) {
-  for (let attempt = 1; attempt <= retries; attempt++) {
-    try {
-      // Получаем ссылку от балансировщика
-      const linkResponse = await axios.get(
-        `${SERVER_URL}/api/download/${fileKey}`,
-        { timeout: 10000 }
-      );
-      
-      if (!linkResponse.data.success) {
-        throw new Error('Балансировщик не вернул ссылку');
+// Вспомогательная функция для задержки
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Скачивание одного куска через P2P
+async function downloadChunk(fileKey, chunk) {
+  // Проверяем остановку
+  downloadController.checkStopped();
+  await downloadController.waitIfPaused();
+
+  // Создаем AbortController для этого запроса
+  const abortController = new AbortController();
+  downloadController.addRequest(abortController);
+
+  try {
+    // Получаем ссылку от балансировщика
+    const linkResponse = await axios.get(
+      `${SERVER_URL}/api/download/${fileKey}`,
+      { 
+        timeout: 10000,
+        signal: abortController.signal
       }
-      
-      const downloadUrl = linkResponse.data.downloadUrl;
-      
-      // Скачиваем кусок с Range заголовком
-      const response = await axios({
-        method: 'get',
-        url: downloadUrl,
-        headers: {
-          'Range': `bytes=${chunk.start}-${chunk.end}`
-        },
-        responseType: 'arraybuffer',
-        timeout: 30000
-      });
-      
-      // Проверяем, что получили правильный статус
-      if (response.status !== 206 && response.status !== 200) {
-        throw new Error(`Неверный статус: ${response.status}`);
-      }
-      
-      // Сохраняем кусок
-      fs.writeFileSync(chunk.tempFile, Buffer.from(response.data));
-      
-      return {
-        success: true,
-        chunkId: chunk.id,
-        size: response.data.byteLength,
-        server: linkResponse.data.server
-      };
-      
-    } catch (error) {
-      if (attempt === retries) {
-        throw new Error(`Кусок ${chunk.id} - ошибка после ${retries} попыток: ${error.message}`);
-      }
-      console.log(`  ⚠️  Кусок ${chunk.id} - попытка ${attempt} неудачна, повтор...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+    );
+    
+    if (!linkResponse.data.success) {
+      throw new Error('Балансировщик не вернул ссылку');
     }
+    
+    const downloadUrl = linkResponse.data.downloadUrl;
+    
+    // Проверяем остановку перед загрузкой
+    downloadController.checkStopped();
+    await downloadController.waitIfPaused();
+    
+    // Скачиваем кусок с Range заголовком
+    const response = await axios({
+      method: 'get',
+      url: downloadUrl,
+      headers: {
+        'Range': `bytes=${chunk.start}-${chunk.end}`
+      },
+      responseType: 'arraybuffer',
+      timeout: 30000,
+      signal: abortController.signal
+    });
+    
+    // Проверяем, что получили правильный статус
+    if (response.status !== 206 && response.status !== 200) {
+      throw new Error(`Неверный статус: ${response.status}`);
+    }
+    
+    // Сохраняем кусок
+    fs.writeFileSync(chunk.tempFile, Buffer.from(response.data));
+    
+    return {
+      success: true,
+      chunkId: chunk.id,
+      size: response.data.byteLength,
+      server: linkResponse.data.server
+    };
+  } finally {
+    downloadController.removeRequest(abortController);
+  }
+}
+
+// Функция retry для загрузки кусков
+async function downloadChunkWithRetry(downloadFunc, chunk, sourceName) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= MAX_CHUNK_RETRIES; attempt++) {
+    try {
+      // Проверяем остановку
+      downloadController.checkStopped();
+      await downloadController.waitIfPaused();
+
+      if (attempt > 1) {
+        const delayTime = RETRY_DELAY_MS * Math.pow(2, attempt - 2);
+        console.log(`  ⟳ Повтор ${attempt}/${MAX_CHUNK_RETRIES} для куска ${chunk.id} (${sourceName}) через ${delayTime}мс...`);
+        await delay(delayTime);
+      }
+      
+      const result = await downloadFunc();
+      
+      if (attempt > 1) {
+        console.log(`  ✓ Кусок ${chunk.id} загружен с попытки ${attempt}`);
+      }
+      
+      return result;
+    } catch (error) {
+      // Если загрузка была остановлена, пробрасываем ошибку
+      if (error.message === 'DOWNLOAD_STOPPED' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+
+      lastError = error;
+      
+      if (attempt < MAX_CHUNK_RETRIES) {
+        console.log(`  ⚠ Попытка ${attempt}/${MAX_CHUNK_RETRIES} провалилась для куска ${chunk.id} (${sourceName}): ${error.message}`);
+      }
+    }
+  }
+  
+  throw new Error(`Кусок ${chunk.id} (${sourceName}): все ${MAX_CHUNK_RETRIES} попытки провалились. Последняя ошибка: ${lastError.message}`);
+}
+
+// Функция для загрузки куска с fallback сервера (Range request)
+async function downloadChunkFromFallback(fallbackUrl, chunk, totalFileSize) {
+  // Проверяем остановку
+  downloadController.checkStopped();
+  await downloadController.waitIfPaused();
+
+  const abortController = new AbortController();
+  downloadController.addRequest(abortController);
+
+  try {
+    const start = chunk.id * CHUNK_SIZE;
+    const end = Math.min(start + CHUNK_SIZE - 1, totalFileSize - 1);
+    
+    const response = await axios({
+      method: 'GET',
+      url: fallbackUrl,
+      responseType: 'arraybuffer',
+      headers: {
+        'Range': `bytes=${start}-${end}`
+      },
+      timeout: 30000,
+      signal: abortController.signal
+    });
+    
+    if (response.status !== 206 && response.status !== 200) {
+      throw new Error(`Неверный статус: ${response.status}`);
+    }
+    
+    const data = Buffer.from(response.data);
+    fs.writeFileSync(chunk.tempFile, data);
+    
+    return {
+      chunkId: chunk.id,
+      size: data.length,
+      server: 'fallback'
+    };
+  } finally {
+    downloadController.removeRequest(abortController);
   }
 }
 
 // Объединение кусков в итоговый файл
 async function mergeChunks(state, outputPath) {
   console.log('\n→ Объединение кусков...');
+  updateProgress(50); // Начинаем слияние на 50%
   
   const writer = fs.createWriteStream(outputPath);
   const hash = crypto.createHash('sha256');
   
   for (let i = 0; i < state.chunks.length; i++) {
+    // Проверяем остановку
+    downloadController.checkStopped();
+    await downloadController.waitIfPaused();
+
     const chunk = state.chunks[i];
     
     if (!fs.existsSync(chunk.tempFile)) {
@@ -202,6 +400,10 @@ async function mergeChunks(state, outputPath) {
     const data = fs.readFileSync(chunk.tempFile);
     writer.write(data);
     hash.update(data);
+    
+    // Прогресс слияния (50-70%)
+    const mergeProgress = 50 + ((i + 1) / state.chunks.length) * 20;
+    updateProgress(mergeProgress);
     
     process.stdout.write(`\r  Объединение: ${i + 1}/${state.chunks.length} кусков...`);
   }
@@ -226,6 +428,7 @@ async function mergeChunks(state, outputPath) {
   }
   
   console.log('✓ Хеш верифицирован - файл целостен');
+  updateProgress(70);
   
   // Очищаем временные файлы
   state.clearState();
@@ -233,92 +436,192 @@ async function mergeChunks(state, outputPath) {
   return true;
 }
 
-async function getFileSize(url) {
-  try {
-      // Делаем HEAD запрос для получения только заголовков без скачивания файла
-      const response = await axios.head(url);
-      
-      // Получаем размер из заголовка Content-Length
-      const fileSize = response.headers['content-length'];
-      
-      if (fileSize) {
-      // Конвертируем в число
-      const sizeInBytes = parseInt(fileSize, 10);
-      
-      // Возвращаем размер в байтах и форматированный размер
-      return {
-          bytes: sizeInBytes,
-          kb: (sizeInBytes / 1024).toFixed(2),
-          mb: (sizeInBytes / (1024 * 1024)).toFixed(2),
-          mb: (sizeInBytes / (1024 * 1024)).toFixed(2),
-          gb: (sizeInBytes / (1024 * 1024 * 1024)).toFixed(2),
-          formatted: formatFileSize(sizeInBytes)
-      };
-      } else {
-      throw new Error('Content-Length header not found');
+// Функция для прямой загрузки файла с retry
+async function downloadDirectlyWithRetry(url, outputPath) {
+  let lastError;
+  
+  for (let attempt = 1; attempt <= MAX_CHUNK_RETRIES; attempt++) {
+    try {
+      // Проверяем остановку
+      downloadController.checkStopped();
+      await downloadController.waitIfPaused();
+
+      if (attempt > 1) {
+        const delayTime = RETRY_DELAY_MS * Math.pow(2, attempt - 2);
+        console.log(`\n⟳ Повтор прямой загрузки ${attempt}/${MAX_CHUNK_RETRIES} через ${delayTime}мс...`);
+        await delay(delayTime);
       }
-  } catch (error) {
-      console.error('Error getting file size:', error.message);
-      throw error;
+      
+      return await downloadDirectly(url, outputPath);
+    } catch (error) {
+      // Если загрузка была остановлена, пробрасываем ошибку
+      if (error.message === 'DOWNLOAD_STOPPED' || error.code === 'ERR_CANCELED') {
+        throw error;
+      }
+
+      lastError = error;
+      
+      if (attempt < MAX_CHUNK_RETRIES) {
+        console.log(`⚠ Попытка ${attempt}/${MAX_CHUNK_RETRIES} прямой загрузки провалилась: ${error.message}`);
+      }
+    }
   }
+  
+  throw new Error(`Прямая загрузка: все ${MAX_CHUNK_RETRIES} попытки провалились. Последняя ошибка: ${lastError.message}`);
 }
+
+// Функция для прямой загрузки файла
+async function downloadDirectly(url, outputPath) {
+  console.log(`\n→ Прямая загрузка с: ${url}`);
+  updateProgress(0);
   
-function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
-  
-  const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const abortController = new AbortController();
+  downloadController.addRequest(abortController);
+
+  try {
+    const writer = fs.createWriteStream(outputPath);
+    
+    const response = await axios({
+      method: 'GET',
+      url: url,
+      responseType: 'stream',
+      timeout: 30000,
+      signal: abortController.signal
+    });
+    
+    const totalSize = parseInt(response.headers['content-length'], 10);
+    let downloadedSize = 0;
+    
+    console.log(`  Размер файла: ${(totalSize / 1024 / 1024).toFixed(2)} МБ`);
+    
+    response.data.on('data', async (chunk) => {
+      // Проверяем паузу и остановку
+      try {
+        downloadController.checkStopped();
+        await downloadController.waitIfPaused();
+        
+        downloadedSize += chunk.length;
+        const progress = (downloadedSize / totalSize) * 50; // 0-50% для загрузки
+        updateProgress(progress);
+      } catch (error) {
+        // Останавливаем поток при ошибке
+        response.data.destroy();
+        writer.destroy();
+      }
+    });
+    
+    response.data.pipe(writer);
+    
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => {
+        updateProgress(50);
+        console.log(`\n✓ Прямая загрузка завершена`);
+        resolve({ success: true, verified: false });
+      });
+      
+      writer.on('error', reject);
+      response.data.on('error', reject);
+    });
+  } finally {
+    downloadController.removeRequest(abortController);
+  }
 }
 
 // Основная функция загрузки
-async function downloadFile(fileKey, outputPath = null) {
-  if (!outputPath) {
-    outputPath = path.join(OUTPUT_DIR, path.basename(fileKey));
+async function downloadFile(fileKey, outputPath, tempDir, gameOriginalUrl) {
+  // Сбрасываем контроллер для новой загрузки
+  downloadController.reset();
+
+  // Создаём временную директорию
+  if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
   }
   
-  // Создаём директории
-  [OUTPUT_DIR, TEMP_DIR].forEach(dir => {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  });
+  // Fallback URL формируется из ключа
+  const fallbackUrl = `${gameOriginalUrl}/${fileKey}`;
+  let useP2P = false;
+  let useFallback = false;
+  let useHybrid = false;
+  let fileInfo = null;
   
   try {
-    console.log(`Запрос файла: ${fileKey.padEnd(27)}`);
+    console.log(`Запрос файла: ${fileKey}`);
+    updateProgress(0);
     
-    // Получаем информацию о файле
-    const infoResponse = await axios.get(
-      `${SERVER_URL}/api/download/${fileKey}`,
-      { timeout: 10000 }
-    );
-    
-    if (!infoResponse.data.success) {
-      throw new Error('Файл не найден в сети');
+    // Пытаемся получить информацию о P2P загрузке
+    try {
+      const infoResponse = await axios.get(
+        `${SERVER_URL}/api/download/${fileKey}`,
+        { timeout: 10000 }
+      );
+      
+      if (infoResponse.data.success) {
+        fileInfo = infoResponse.data.fileInfo;
+        
+        if (fileInfo.providersCount === 0) {
+          console.log(`⚠ Нет доступных провайдеров, используем прямую загрузку`);
+          useFallback = true;
+        } else if (fileInfo.providersCount <= 1) {
+          console.log(`⚠ Мало провайдеров (${fileInfo.providersCount}), используем гибридную загрузку`);
+          useHybrid = true;
+        } else {
+          console.log(`✓ P2P загрузка доступна (провайдеров: ${fileInfo.providersCount})`);
+          useP2P = true;
+        }
+      }
+    } catch (p2pError) {
+      console.log(`⚠ P2P недоступен, используем прямую загрузку`);
+      useFallback = true;
     }
     
-    const fileInfo = infoResponse.data.fileInfo;
+    // Если P2P недоступен или нет провайдеров, используем прямую загрузку
+    if (useFallback) {
+      await downloadDirectlyWithRetry(fallbackUrl, outputPath);
+      return { success: true, verified: false };
+    }
     
+    // Логируем информацию о файле
     console.log(`\n→ Информация о файле:`);
     console.log(`  Размер: ${(fileInfo.size / 1024 / 1024).toFixed(2)} МБ`);
     console.log(`  Хеш: ${fileInfo.hash.substring(0, 32)}...`);
     console.log(`  Провайдеров: ${fileInfo.providersCount}`);
     console.log(`  Кусков: ${Math.ceil(fileInfo.size / CHUNK_SIZE)} по ${CHUNK_SIZE / 1024 / 1024} МБ`);
     console.log(`  Параллельных потоков: ${PARALLEL_CHUNKS}`);
+    console.log(`  Попыток на кусок: ${MAX_CHUNK_RETRIES}`);
+    
+    if (useHybrid) {
+      console.log(`  Режим: ГИБРИДНЫЙ (P2P + прямая загрузка)`);
+    }
     
     // Инициализируем состояние
-    const state = new DownloadState(fileKey, fileInfo);
+    const state = new DownloadState(fileKey, fileInfo, tempDir);
     state.loadState();
     
     const startTime = Date.now();
     const serversUsed = new Set();
+    let consecutiveErrors = 0;
+    const MAX_CONSECUTIVE_ERRORS = 5;
+    
+    // Для гибридного режима - проверяем доступность fallback
+    let fallbackAvailable = false;
+    if (useHybrid) {
+      try {
+        const headResponse = await axios.head(fallbackUrl, { timeout: 5000 });
+        fallbackAvailable = headResponse.status === 200;
+        console.log(`  Fallback сервер: ${fallbackAvailable ? '✓ доступен' : '✗ недоступен'}`);
+      } catch (e) {
+        console.log(`  Fallback сервер: ✗ недоступен`);
+      }
+    }
     
     console.log(`\n→ Загрузка начата...`);
     
     // Скачиваем куски параллельно
     while (!state.isComplete()) {
+      // Проверяем остановку
+      downloadController.checkStopped();
+      await downloadController.waitIfPaused();
+
       const nextChunks = state.getNextChunks(PARALLEL_CHUNKS);
       
       if (nextChunks.length === 0) break;
@@ -327,22 +630,106 @@ async function downloadFile(fileKey, outputPath = null) {
       console.log(`\n  Прогресс: ${progress.percent}% (${progress.downloaded}/${progress.total})`);
       console.log(`  Загрузка ${nextChunks.length} кусков...`);
       
-      // Загружаем куски параллельно
-      const promises = nextChunks.map(chunk => 
-        downloadChunk(fileKey, chunk)
-          .then(result => {
-            serversUsed.add(result.server);
-            state.markComplete(result.chunkId);
-            console.log(`  ✓ Кусок ${result.chunkId} (${(result.size / 1024 / 1024).toFixed(2)} МБ) от ${result.server}`);
-            return result;
-          })
-          .catch(error => {
-            console.error(`  ✗ ${error.message}`);
-            return null;
-          })
-      );
+      // В гибридном режиме чередуем источники
+      const promises = nextChunks.map((chunk, index) => {
+        const useFallbackForChunk = useHybrid && fallbackAvailable && (index % 2 === 0);
+        
+        if (useFallbackForChunk) {
+          return downloadChunkWithRetry(
+            () => downloadChunkFromFallback(fallbackUrl, chunk, fileInfo.size),
+            chunk,
+            'FALLBACK'
+          )
+            .then(result => {
+              serversUsed.add('fallback');
+              state.markComplete(result.chunkId);
+              console.log(`  ✓ Кусок ${result.chunkId} (${(result.size / 1024 / 1024).toFixed(2)} МБ) от FALLBACK`);
+              consecutiveErrors = 0;
+              return result;
+            })
+            .catch(error => {
+              // Если остановлено, пробрасываем ошибку
+              if (error.message === 'DOWNLOAD_STOPPED' || error.code === 'ERR_CANCELED') {
+                throw error;
+              }
+
+              console.error(`  ✗ Fallback полностью провалился: ${error.message}`);
+              return downloadChunkWithRetry(
+                () => downloadChunk(fileKey, chunk),
+                chunk,
+                'P2P (резерв)'
+              )
+                .then(result => {
+                  serversUsed.add(result.server);
+                  state.markComplete(result.chunkId);
+                  console.log(`  ✓ Кусок ${result.chunkId} (${(result.size / 1024 / 1024).toFixed(2)} МБ) от ${result.server} (резерв)`);
+                  consecutiveErrors = 0;
+                  return result;
+                })
+                .catch(p2pError => {
+                  if (p2pError.message === 'DOWNLOAD_STOPPED' || p2pError.code === 'ERR_CANCELED') {
+                    throw p2pError;
+                  }
+                  console.error(`  ✗ P2P резерв тоже провалился: ${p2pError.message}`);
+                  consecutiveErrors++;
+                  return null;
+                });
+            });
+        } else {
+          return downloadChunkWithRetry(
+            () => downloadChunk(fileKey, chunk),
+            chunk,
+            'P2P'
+          )
+            .then(result => {
+              serversUsed.add(result.server);
+              state.markComplete(result.chunkId);
+              console.log(`  ✓ Кусок ${result.chunkId} (${(result.size / 1024 / 1024).toFixed(2)} МБ) от ${result.server}`);
+              consecutiveErrors = 0;
+              return result;
+            })
+            .catch(error => {
+              if (error.message === 'DOWNLOAD_STOPPED' || error.code === 'ERR_CANCELED') {
+                throw error;
+              }
+
+              console.error(`  ✗ P2P полностью провалился: ${error.message}`);
+              consecutiveErrors++;
+              
+              if (useHybrid && fallbackAvailable) {
+                return downloadChunkWithRetry(
+                  () => downloadChunkFromFallback(fallbackUrl, chunk, fileInfo.size),
+                  chunk,
+                  'FALLBACK (резерв)'
+                )
+                  .then(result => {
+                    serversUsed.add('fallback');
+                    state.markComplete(result.chunkId);
+                    console.log(`  ✓ Кусок ${result.chunkId} (${(result.size / 1024 / 1024).toFixed(2)} МБ) от FALLBACK (резерв)`);
+                    consecutiveErrors = 0;
+                    return result;
+                  })
+                  .catch(fallbackError => {
+                    if (fallbackError.message === 'DOWNLOAD_STOPPED' || fallbackError.code === 'ERR_CANCELED') {
+                      throw fallbackError;
+                    }
+                    console.error(`  ✗ Fallback резерв тоже провалился: ${fallbackError.message}`);
+                    return null;
+                  });
+              }
+              
+              return null;
+            });
+        }
+      });
       
       await Promise.all(promises);
+      
+      if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+        console.log(`\n⚠ Слишком много ошибок (${consecutiveErrors}), переключаемся на прямую загрузку...`);
+        await downloadDirectlyWithRetry(fallbackUrl, outputPath);
+        return { success: true, verified: false };
+      }
     }
     
     if (!state.isComplete()) {
@@ -370,40 +757,129 @@ async function downloadFile(fileKey, outputPath = null) {
     return { success: true, verified: true };
     
   } catch (error) {
-    console.error(`\n✗ Ошибка загрузки: ${error.message}`);
-    throw error;
-  }
-}
-
-// Поиск файлов
-async function searchFiles(searchKey) {
-  try {
-    const response = await axios.get(`${SERVER_URL}/api/files`, {
-      params: { key: searchKey },
-      timeout: 10000
-    });
-    
-    if (response.data.error) {
-      console.log(`⚠️  ${response.data.error}`);
-      console.log(`   ${response.data.hint}`);
-      return [];
+    // Если загрузка была остановлена пользователем
+    if (error.message === 'DOWNLOAD_STOPPED' || error.code === 'ERR_CANCELED') {
+      console.log('\n⏹  Загрузка отменена пользователем');
+      return { success: false, stopped: true };
     }
+
+    console.error(`\n✗ Ошибка P2P загрузки: ${error.message}`);
+    console.log(`⚠ Переключаемся на прямую загрузку...`);
     
-    console.log(`\n╔═══════════════ НАЙДЕНО ФАЙЛОВ: ${response.data.found} ═══════════════╗`);
-    
-    response.data.files.forEach((file, index) => {
-      const size = (file.size / 1024 / 1024).toFixed(2);
-      console.log(`║ ${(index + 1).toString().padEnd(2)}. ${file.key.padEnd(40)}║`);
-      console.log(`║     Размер: ${size.padEnd(10)} МБ | Провайдеров: ${file.totalProviders.toString().padEnd(3)} ║`);
-    });
-    
-    console.log(`╚═════════════════════════════════════════════════════════╝\n`);
-    
-    return response.data.files;
-  } catch (error) {
-    console.error('✗ Ошибка поиска:', error.message);
-    return [];
+    try {
+      await downloadDirectlyWithRetry(fallbackUrl, outputPath);
+      return { success: true, verified: false };
+    } catch (fallbackError) {
+      // Если загрузка была остановлена пользователем
+      if (fallbackError.message === 'DOWNLOAD_STOPPED' || fallbackError.code === 'ERR_CANCELED') {
+        console.log('\n⏹  Загрузка отменена пользователем');
+        return { success: false, stopped: true };
+      }
+
+      console.error(`\n✗ Ошибка прямой загрузки: ${fallbackError.message}`);
+      throw new Error('Не удалось загрузить файл ни одним из способов');
+    }
   }
 }
 
-module.exports = { downloadFile, getFileSize };
+// Распаковка архива
+async function extractArchive(archivePath, extractPath) {
+  console.log('\n→ Распаковка архива...');
+  updateProgress(70);
+  
+  return new Promise((resolve, reject) => {
+    try {
+      // Проверяем остановку
+      downloadController.checkStopped();
+
+      const zip = new AdmZip(archivePath);
+      const entries = zip.getEntries();
+      const totalEntries = entries.length;
+      
+      let extractedCount = 0;
+      
+      entries.forEach((entry) => {
+        // Проверяем остановку на каждом файле
+        try {
+          downloadController.checkStopped();
+        } catch (error) {
+          throw new Error('DOWNLOAD_STOPPED');
+        }
+
+        if (!entry.isDirectory) {
+          zip.extractEntryTo(entry, extractPath, true, true);
+        }
+        extractedCount++;
+        
+        // Прогресс распаковки (70-100%)
+        const extractProgress = 70 + (extractedCount / totalEntries) * 30;
+        updateProgress(extractProgress);
+      });
+      
+      console.log(`✓ Распаковка завершена: ${totalEntries} файлов`);
+      updateProgress(100);
+      resolve();
+    } catch (error) {
+      if (error.message === 'DOWNLOAD_STOPPED') {
+        console.log('\n⏹  Распаковка отменена пользователем');
+        reject(error);
+      } else {
+        reject(error);
+      }
+    }
+  });
+}
+
+async function getFileSize(url) {
+  try {
+      // Делаем HEAD запрос для получения только заголовков без скачивания файла
+      const response = await axios.head(url);
+      
+      // Получаем размер из заголовка Content-Length
+      const fileSize = response.headers['content-length'];
+      
+      if (fileSize) {
+      // Конвертируем в число
+      const sizeInBytes = parseInt(fileSize, 10);
+      
+      // Возвращаем размер в байтах и форматированный размер
+      return {
+          bytes: sizeInBytes,
+          kb: (sizeInBytes / 1024).toFixed(2),
+          mb: (sizeInBytes / (1024 * 1024)).toFixed(2),
+          gb: (sizeInBytes / (1024 * 1024 * 1024)).toFixed(2),
+          formatted: formatFileSize(sizeInBytes)
+      };
+      } else {
+      throw new Error('Content-Length header not found');
+      }
+  } catch (error) {
+      console.error('Error getting file size:', error.message);
+      throw error;
+  }
+}
+  
+function formatFileSize(bytes) {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+
+module.exports = { 
+  downloadFile, 
+  extractArchive,
+  setProgressCallback,
+  updateProgress,
+  getFileSize,
+  // Новые функции управления загрузкой
+  pauseDownload,
+  resumeDownload,
+  stopDownload,
+  isDownloadPaused,
+  isDownloadStopped
+};

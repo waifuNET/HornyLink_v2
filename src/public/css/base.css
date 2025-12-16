@@ -28,7 +28,7 @@
   
   /* Цвета границ */
   --border-primary: rgba(255, 255, 255, 0.2);
-  --border-radius: 8px;
+  --border-radius: 3px;
   --border-radius-medium: 12px;
   --border-radius-large: 16px;
   --border-radius-xl: 18px;
@@ -40,6 +40,10 @@
   --spacing-lg: 1.5rem;
   --spacing-xl: 2rem;
   --spacing-xxl: 30px;
+
+  --footer-height: 35px;
+
+  --font-size: 16px;
   
   /* Ширины */
   --width-container: 400px;
@@ -85,9 +89,10 @@
   background-color: transparent;
 }
 
-html, body {
+body {
     margin: 0;
-    padding: 0;
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
-    height: 100%;
 }

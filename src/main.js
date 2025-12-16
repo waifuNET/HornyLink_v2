@@ -9,18 +9,13 @@ const osUtils = require('./utils/osUtils')
 const { LanguageVariables, ApplicationSettings, AppVariables } = require('./state');
 const Games = require('./logic/games/games');
 ApplicationSettings.loadSettings();
+const windowManager = require('./windowManager');
 
 const setupIpcHandlers_languages = require('./logic/ipc/ipcHandlers_languages');
 const setupIpcHandlers_auth = require('./logic/ipc/ipcHandlers_auth');
 const setupIpcHandlers_cfg = require('./logic/ipc/ipcHandlers_cfg');
 const setupIpcHandlers_games = require('./logic/ipc/ipcHandlers_games');
 const setupIpcHandlers_os = require('./logic/ipc/ipcHandlers_os');
-
-setupIpcHandlers_languages();
-setupIpcHandlers_auth();
-setupIpcHandlers_cfg();
-setupIpcHandlers_games();
-setupIpcHandlers_os();
 
 async function InitModules(){
   await Games.Init();
@@ -193,7 +188,6 @@ async function createLoadingWindow() {
 
   devHackSecure(loading);
 
-  WindowUtils.goToPage('/static/appLoading.html');
   loading.isMainWindowCreated = false;
   
   loading.on('closed', () => {
@@ -209,9 +203,19 @@ async function createLoadingWindow() {
 
 app.whenReady().then(async () => {
     const winLoading = await createLoadingWindow();
+    WindowUtils.goToPage('/static/appLoading.html', winLoading);
     winLoading.show();
 
     const win = await createWindow();
+
+    windowManager.initialize(win);
+
+    setupIpcHandlers_languages();
+    setupIpcHandlers_auth();
+    setupIpcHandlers_cfg();
+    setupIpcHandlers_games();
+    setupIpcHandlers_os();
+
     WindowUtils.win = win;
 
     const internetConnection = await hasInternetConnection();

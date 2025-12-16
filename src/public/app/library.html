@@ -32,7 +32,12 @@
             </div>
 
             <div class="game-actions">
-                <button class="btn-play" id="btn-play">▶ ИГРАТЬ</button>
+                <div class="game-play-btns">
+                    <button class="btn-play" id="btn-play">▶ ИГРАТЬ</button>
+                    <button class="btn-cansel" style="display: none;" id="btn-cansel">❌ ОТМЕНИТЬ</button>
+                    <button class="btn-pause" style="display: none;" id="btn-pause">⏸️ ПАУЗА</button>
+                    <button class="btn-more" id="btn-more">▼</button>
+                </div>
                 <div class="game-info-bar">
                     <div class="info-item">
                         <div class="info-label">Облачные сохранения</div>
@@ -92,9 +97,26 @@
         </div>
     </div>
 
+    <div id="footer">
+        <div class="download-status" id="footer-download-status">
+            
+            <div class="status-icon">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 16L7 11L8.41 9.59L11 12.17V4H13V12.17L15.59 9.59L17 11L12 16ZM12 20C7.59 20 4 16.41 4 12H2C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12H20C20 16.41 16.41 20 12 20Z" fill="currentColor"/>
+                </svg>
+            </div>
+
+            <div class="status-info">
+                <span class="status-text" id="footer-text">Нет активных загрузок</span>
+            </div>
+            
+        </div>
+    </div>
+
     <script src="../scripts/modules/staticTranslations.js"></script>
     <script src="../scripts/modules/htmlLoader.js"></script>
     <script src="../scripts/library.js"></script>
+    <script src="../scripts/downloadController.js"></script>
     <script>
         window.loadHtmlFile("header", "./elements/header.html");
     </script>

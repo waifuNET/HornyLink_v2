@@ -21,6 +21,144 @@ class LocalUserBase{
     }
 }
 
+class InstalledGamesInfo {
+    static games = [];
+
+    /**
+     * Добавляет или обновляет игру в списке установленных
+     * @param {object} gameData - Данные игры (должны включать id, installPath, executablePath, isInstalled)
+     */
+    static addOrUpdateGame(gameData) {
+        if (!gameData.id) {
+            console.error('[InstalledGamesInfo] Невозможно добавить игру без ID');
+            return;
+        }
+
+        const existingIndex = this.games.findIndex(g => g.id === gameData.id);
+        
+        if (existingIndex !== -1) {
+            // Обновляем существующую игру
+            this.games[existingIndex] = {
+                ...this.games[existingIndex],
+                ...gameData
+            };
+            console.log(`[InstalledGamesInfo] Обновлена игра: ${gameData.title || gameData.id}`);
+        } else {
+            // Добавляем новую игру
+            this.games.push(gameData);
+            console.log(`[InstalledGamesInfo] Добавлена игра: ${gameData.title || gameData.id}`);
+        }
+    }
+
+    /**
+     * Удаляет игру из списка установленных
+     * @param {number} gameId - ID игры
+     * @returns {boolean} - true если игра была удалена, false если не найдена
+     */
+    static removeGame(gameId) {
+        const initialLength = this.games.length;
+        this.games = this.games.filter(g => g.id !== gameId);
+        
+        const removed = this.games.length < initialLength;
+        
+        if (removed) {
+            console.log(`[InstalledGamesInfo] Удалена игра с ID: ${gameId}`);
+        } else {
+            console.warn(`[InstalledGamesInfo] Игра с ID ${gameId} не найдена для удаления`);
+        }
+        
+        return removed;
+    }
+
+    /**
+     * Получает игру по ID
+     * @param {number} gameId - ID игры
+     * @returns {object|null} - Объект игры или null если не найдена
+     */
+    static getGameById(gameId) {
+        return this.games.find(g => g.id === gameId) || null;
+    }
+
+    /**
+     * Получает все установленные игры
+     * @returns {array} - Массив всех установленных игр
+     */
+    static getAllGames() {
+        return [...this.games];
+    }
+
+    /**
+     * Проверяет, установлена ли игра
+     * @param {number} gameId - ID игры
+     * @returns {boolean} - true если игра установлена
+     */
+    static isGameInstalled(gameId) {
+        const game = this.getGameById(gameId);
+        return game ? game.isInstalled === true : false;
+    }
+
+    /**
+     * Получает количество установленных игр
+     * @returns {number} - Количество игр
+     */
+    static getInstalledCount() {
+        return this.games.filter(g => g.isInstalled === true).length;
+    }
+
+    /**
+     * Очищает весь список установленных игр
+     */
+    static clearAll() {
+        this.games = [];
+        console.log('[InstalledGamesInfo] Список установленных игр очищен');
+    }
+
+    /**
+     * Получает игры, установленные на определенном диске
+     * @param {string} drivePath - Путь к диску (например, "C:" или "E:")
+     * @returns {array} - Массив игр на указанном диске
+     */
+    static getGamesByDrive(drivePath) {
+        const normalizedDrive = drivePath.toLowerCase().replace(/[\/\\]$/, '');
+        return this.games.filter(g => {
+            if (!g.installPath) return false;
+            const gameDrive = g.installPath.split(path.sep)[0].toLowerCase();
+            return gameDrive === normalizedDrive;
+        });
+    }
+
+    /**
+     * Обновляет конкретное поле у игры
+     * @param {number} gameId - ID игры
+     * @param {string} field - Название поля
+     * @param {any} value - Новое значение
+     * @returns {boolean} - true если обновление прошло успешно
+     */
+    static updateGameField(gameId, field, value) {
+        const game = this.getGameById(gameId);
+        
+        if (!game) {
+            console.warn(`[InstalledGamesInfo] Игра с ID ${gameId} не найдена для обновления поля ${field}`);
+            return false;
+        }
+
+        game[field] = value;
+        console.log(`[InstalledGamesInfo] Обновлено поле ${field} для игры ${gameId}`);
+        return true;
+    }
+
+    /**
+     * Выводит информацию о всех установленных играх (для отладки)
+     */
+    static printAll() {
+        console.log('[InstalledGamesInfo] Установленные игры:');
+        this.games.forEach((game, index) => {
+            console.log(`  ${index + 1}. ID: ${game.id}, Title: ${game.title || 'N/A'}, Path: ${game.installPath || 'N/A'}`);
+        });
+        console.log(`[InstalledGamesInfo] Всего: ${this.games.length} игр`);
+    }
+}
+
 /*
     "id": 5,
     "title": "Alien Quest: EVE",
@@ -99,6 +237,7 @@ class GameCollection {
   static async getGameSize(id){
     const game = this.games.find(g => g.id === id);
 
+
     if (!game) {
         return null;
     }
@@ -109,7 +248,8 @@ class GameCollection {
       const fileSize = await getFileSize(`${storage_url}/${download_link}`);
       return fileSize;
     }
-    catch{
+    catch (err){
+      console.log(`[STATE] getGameSize: ${err}`);
       return null;
     }
   }
@@ -496,5 +636,6 @@ module.exports = {
     LanguageVariables,
     ApplicationSettings,
     GameCollection,
-    AppVariables
+    AppVariables,
+    InstalledGamesInfo
 };
