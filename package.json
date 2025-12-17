@@ -2,22 +2,36 @@
   "name": "HornyLink",
   "version": "1.5.1",
   "main": "src/main.js",
+  "author": "WaifNET",
+  "description": "HornyLink P2P Application",
   "scripts": {
     "start": "powershell -NoLogo -NoProfile -Command \"chcp 65001; electron .\"",
-    "build": "electron-builder --win --x64"
-  },
-  "devDependencies": {
-    "electron": "^30.0.0",
-    "javascript-obfuscator": "^4.1.1"
+    "start:dev": "NODE_ENV=development electron .",
+    "build": "electron-builder --win --x64",
+    "build:linux": "electron-builder --linux --x64",
+    "build:linux:arm64": "electron-builder --linux --arm64",
+    "build:all": "electron-builder -wl",
+    "postinstall": "electron-builder install-app-deps"
   },
   "build": {
-    "asar": true,
-    "directories": {
-      "output": "build"
-    },
     "appId": "com.waifnet.hornyLink",
+    "productName": "HornyLink",
+    "copyright": "Copyright © 2025 WaifNET",
+    "directories": {
+      "output": "builds",
+      "buildResources": "resources"
+    },
+    "extraResources": [
+      {
+        "from": "icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "icon.png",
+        "to": "icon.png"
+      }
+    ],
     "win": {
-      "icon": "icon.ico",
       "target": [
         {
           "target": "dir",
@@ -25,9 +39,52 @@
             "x64"
           ]
         }
-      ]
-    }
+      ],
+      "icon": "icon.ico",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "icon.png",
+      "category": "Network",
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "desktop": {
+        "Name": "HornyLink",
+        "Comment": "P2P File Sharing Application",
+        "Categories": "Network;FileTransfer;",
+        "StartupNotify": "true"
+      }
+    },
+    "asar": true,
+    "asarUnpack": [],
+    "compression": "maximum",
+    "buildDependenciesFromSource": false,
+    "npmRebuild": false
   },
+  "files": [
+    "src/**/*",
+    "package.json",
+    "!src/**/*.map",
+    "!**/node_modules/**/{CHANGELOG.md,README.md,README,readme.md,readme}",
+    "!**/node_modules/**/{test,__tests__,tests,powered-test,example,examples}",
+    "!**/node_modules/**/*.d.ts",
+    "!**/node_modules/.bin",
+    "!**/*.{iml,o,hprof,orig,pyc,pyo,rbc,swp,csproj,sln,xproj}",
+    "!.editorconfig",
+    "!**/._*",
+    "!**/{.DS_Store,.git,.hg,.svn,CVS,RCS,SCCS,.gitignore,.gitattributes}",
+    "!**/{__pycache__,thumbs.db,.flowconfig,.idea,.vs,.nyc_output}",
+    "!**/{appveyor.yml,.travis.yml,circle.yml}",
+    "!**/{npm-debug.log,yarn.lock,.yarn-integrity,.yarn-metadata.json}"
+  ],
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3"
