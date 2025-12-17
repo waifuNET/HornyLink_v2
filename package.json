@@ -4,10 +4,7 @@
   "main": "src/main.js",
   "scripts": {
     "start": "powershell -NoLogo -NoProfile -Command \"chcp 65001; electron .\"",
-    "start:prod": "cd app-obfuscated && npx electron .",
-    "obfuscate": "node obfuscate.js",
-    "pack": "npm run obfuscate && npx electron-packager ./app-obfuscated HornyLink --icon=icon.ico --platform=win32 --arch=x64 --overwrite --out=build --asar",
-    "build": "npm run pack"
+    "build": "electron-builder --win --x64"
   },
   "devDependencies": {
     "electron": "^30.0.0",
@@ -30,6 +27,10 @@
         }
       ]
     }
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^24.13.3"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
