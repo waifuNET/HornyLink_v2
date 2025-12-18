@@ -142,6 +142,21 @@ function setupIpcHandlers_games(win) {
             return { success: false, error: error.message };
         }
     });
+
+    // Добавление комментария
+    ipcMain.handle('add-comment', async (event, gameId, content) => {
+        return await Games.addComment(gameId, content);
+    });
+
+    // Удаление комментария
+    ipcMain.handle('delete-comment', async (event, commentId) => {
+        return await Games.deleteComment(commentId);
+    });
+
+    // Удаление игры
+    ipcMain.handle('delete-game', async (event, gameId) => {
+        return await Games.deleteGame(gameId);
+    });
 }
 
 module.exports = setupIpcHandlers_games;

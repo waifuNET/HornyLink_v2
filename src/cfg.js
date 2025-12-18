@@ -11,6 +11,7 @@ module.exports = {
 
     dataAuthPath: path.join(app.getPath('userData'), 'auth.json'),
     applicationSettingsPath: path.join(app.getPath('userData'), 'settings.json'),
+    gamesMetadataPath: path.join(app.getPath('userData'), 'gamesMetadata.json'),
     
     // Настройки кэширования
     cache: {

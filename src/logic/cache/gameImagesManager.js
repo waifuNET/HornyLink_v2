@@ -347,20 +347,32 @@ class GameImagesManager {
 
   /**
    * Удаление локальных изображений игры
+   * @param {string} drivePath - Путь к диску (опционально, если не указан - берётся из кэша)
+   * @param {number} gameId - ID игры
    */
-  async deleteGameImages(gameId) {
-    const cached = this.localImagesCache.get(gameId);
-    if (!cached) return false;
+  async deleteGameImages(drivePath, gameId) {
+    // Поддержка старого API (только gameId)
+    if (arguments.length === 1) {
+      gameId = drivePath;
+      const cached = this.localImagesCache.get(gameId);
+      if (!cached) {
+        console.log(`[GameImages] Изображения для игры ${gameId} не найдены в кэше`);
+        return false;
+      }
+      drivePath = cached.drivePath;
+    }
     
-    const imagesPath = this.getGameImagesPath(cached.drivePath, gameId);
+    const imagesPath = this.getGameImagesPath(drivePath, gameId);
     
     try {
       if (fs.existsSync(imagesPath)) {
         fs.rmSync(imagesPath, { recursive: true, force: true });
+        console.log(`[GameImages] Удалены изображения для игры ${gameId} из ${imagesPath}`);
+      } else {
+        console.log(`[GameImages] Папка изображений не найдена: ${imagesPath}`);
       }
       
       this.localImagesCache.delete(gameId);
-      console.log(`[GameImages] Удалены изображения для игры ${gameId}`);
       return true;
     } catch (error) {
       console.error(`[GameImages] Ошибка удаления изображений для игры ${gameId}:`, error.message);

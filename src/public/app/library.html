@@ -37,6 +37,11 @@
                     <button class="btn-cansel" style="display: none;" id="btn-cansel">❌ ОТМЕНИТЬ</button>
                     <button class="btn-pause" style="display: none;" id="btn-pause">⏸️ ПАУЗА</button>
                     <button class="btn-more" id="btn-more">▼</button>
+                    <!-- Выпадающий список для btn-more -->
+                    <div class="btn-more-dropdown" id="btn-more-dropdown" style="display: none;">
+                        <div class="dropdown-item" id="show-location">📁 Расположение игры</div>
+                        <div class="dropdown-item delete-item" id="delete-game">🗑️ Удалить игру</div>
+                    </div>
                 </div>
                 <div class="game-info-bar">
                     <div class="info-item">
@@ -67,23 +72,24 @@
                 <div class="comments-section" id="activity-content">
                     <h2>Лента активности</h2>
                     
-                    <!--<div class="comment">
-                        <div class="comment-header">
-                            <img src="https://cdn.cloudflare.steamstatic.com/steamcommunity/public/images/avatars/fe/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg" alt="Avatar" class="comment-avatar">
-                            <div class="comment-author">
-                                <div class="author-name">do_you_want_cocoa?</div>
-                                <div class="comment-date">2 дня назад</div>
+                    <!-- Форма добавления комментария -->
+                    <div class="comment-form">
+                        <textarea 
+                            id="comment-input" 
+                            class="comment-textarea" 
+                            placeholder="Напишите комментарий..." 
+                            maxlength="256"></textarea>
+                        <div class="comment-form-footer">
+                            <div class="char-counter">
+                                <span id="char-count">0</span>/256
                             </div>
+                            <button class="btn-submit-comment" id="btn-submit-comment" disabled>Отправить</button>
                         </div>
-                        <div class="comment-text">
-                            Одна из лучших кооперативных игр всех времён! Проходил с друзьями уже раз 10, и каждый раз это невероятно весело. Особенно на экспертной сложности - адреналин зашкаливает!
-                        </div>
-                        <div class="comment-actions">
-                            <div class="comment-action">👍 15</div>
-                            <div class="comment-action">💬 Ответить</div>
-                            <div class="comment-action">⚠ Пожаловаться</div>
-                        </div>
-                    </div>-->
+                    </div>
+
+                    <div id="comments-list">
+                        <!-- Комментарии будут здесь -->
+                    </div>
 
                 </div>
                 

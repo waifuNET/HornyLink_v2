@@ -3,7 +3,7 @@ const path = require('path');
 const os = require('os');
 const { getFileSize } = require('./logic/other/download');
 const { hasInternetConnection } = require('./utils/internetUtils');
-const { applicationSettingsPath } = require('./cfg');
+const { applicationSettingsPath, gamesMetadataPath } = require('./cfg');
 
 class AppVariables {
   static driveInfo = null;
@@ -33,6 +33,101 @@ class LocalUserBase {
     this.id = id;
     this.username = username;
     this.premium_until = premium_until;
+  }
+}
+
+/**
+ * Класс для хранения метаданных игр (дата последнего запуска, время игры и т.д.)
+ * Эти данные сохраняются отдельно и не удаляются при удалении игры
+ */
+class GamesMetadata {
+  static metadata = {}; // gameId -> { lastPlayDate, playtime, ... }
+
+  /**
+   * Загрузка метаданных из файла
+   */
+  static load() {
+    try {
+      if (fs.existsSync(gamesMetadataPath)) {
+        const data = fs.readFileSync(gamesMetadataPath, 'utf8');
+        this.metadata = JSON.parse(data);
+        console.log(`[GamesMetadata] Загружено метаданных для ${Object.keys(this.metadata).length} игр`);
+      } else {
+        console.log('[GamesMetadata] Файл метаданных не найден, создаём новый');
+        this.metadata = {};
+      }
+    } catch (error) {
+      console.error('[GamesMetadata] Ошибка загрузки метаданных:', error);
+      this.metadata = {};
+    }
+  }
+
+  /**
+   * Сохранение метаданных в файл
+   */
+  static save() {
+    try {
+      fs.writeFileSync(gamesMetadataPath, JSON.stringify(this.metadata, null, 2), 'utf8');
+      console.log(`[GamesMetadata] Сохранено метаданных для ${Object.keys(this.metadata).length} игр`);
+      return true;
+    } catch (error) {
+      console.error('[GamesMetadata] Ошибка сохранения метаданных:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Получение метаданных игры
+   */
+  static getGameMetadata(gameId) {
+    return this.metadata[gameId] || null;
+  }
+
+  /**
+   * Обновление метаданных игры
+   */
+  static updateGameMetadata(gameId, updates) {
+    if (!this.metadata[gameId]) {
+      this.metadata[gameId] = {};
+    }
+    
+    this.metadata[gameId] = {
+      ...this.metadata[gameId],
+      ...updates
+    };
+    
+    this.save();
+    return this.metadata[gameId];
+  }
+
+  /**
+   * Обновление даты последнего запуска
+   */
+  static updateLastPlayDate(gameId, date = new Date()) {
+    return this.updateGameMetadata(gameId, {
+      lastPlayDate: date.toISOString()
+    });
+  }
+
+  /**
+   * Обновление времени игры
+   */
+  static updatePlaytime(gameId, playtime) {
+    return this.updateGameMetadata(gameId, {
+      playtime: playtime
+    });
+  }
+
+  /**
+   * Удаление метаданных игры (опционально, обычно не нужно)
+   */
+  static deleteGameMetadata(gameId) {
+    if (this.metadata[gameId]) {
+      delete this.metadata[gameId];
+      this.save();
+      return true;
+    }
+    return false;
   }
 }
 
@@ -252,12 +347,18 @@ class GameCollection {
                 .substring(0, 100);
               const installPath = path.join(disk, 'HornyLibrary', 'games', safeFolderName);
 
+              // Загружаем метаданные из отдельного хранилища
+              const metadata = GamesMetadata.getGameMetadata(gameId);
+              
               const gameObject = {
                 ...gameInfo,
                 id: gameId,
                 isInstalled: true,
                 installPath: installPath,
-                executablePath: null
+                executablePath: null,
+                // Применяем метаданные если они есть
+                lastPlayDate: metadata?.lastPlayDate || gameInfo.lastPlayDate || null,
+                playtime: metadata?.playtime || gameInfo.playtime || null
               };
               
               this.addOrUpdateInstalledGame(gameObject);
@@ -391,6 +492,11 @@ class GameCollection {
     game[field] = value;
     console.log(`[GameCollection] Обновлено поле ${field} для игры ${gameId}`);
     
+    // Если это метаданные (lastPlayDate или playtime), сохраняем их отдельно
+    if (field === 'lastPlayDate' || field === 'playtime') {
+      GamesMetadata.updateGameMetadata(gameId, { [field]: value });
+    }
+    
     // Если это поле установленной игры, сохраняем
     if (game.isInstalled) {
       this.saveInstalledGames();
@@ -415,6 +521,9 @@ class GameCollection {
       const installedGame = installedGamesMap.get(serverGame.id);
       const existingGame = this.getGameById(serverGame.id);
       
+      // Получаем метаданные из отдельного хранилища
+      const metadata = GamesMetadata.getGameMetadata(serverGame.id);
+      
       if (existingGame) {
         // Обновляем существующую игру, сохраняя локальные данные
         this.updateGame(serverGame.id, {
@@ -422,9 +531,9 @@ class GameCollection {
           isInstalled: existingGame.isInstalled,
           installPath: existingGame.installPath || "",
           executablePath: existingGame.executablePath || "",
-          // Сохраняем локальные данные, если они есть
-          lastPlayDate: existingGame.lastPlayDate || serverGame.lastPlayDate,
-          playtime: existingGame.playtime || serverGame.playtime,
+          // Приоритет: метаданные > локальные > серверные
+          lastPlayDate: metadata?.lastPlayDate || existingGame.lastPlayDate || serverGame.lastPlayDate,
+          playtime: metadata?.playtime || existingGame.playtime || serverGame.playtime,
         });
       } else {
         // Добавляем новую игру
@@ -432,7 +541,10 @@ class GameCollection {
           ...serverGame,
           isInstalled: false,
           installPath: "",
-          executablePath: ""
+          executablePath: "",
+          // Применяем метаданные если они есть
+          lastPlayDate: metadata?.lastPlayDate || serverGame.lastPlayDate,
+          playtime: metadata?.playtime || serverGame.playtime,
         });
       }
     });
@@ -731,5 +843,6 @@ module.exports = {
   LanguageVariables,
   ApplicationSettings,
   GameCollection,
-  AppVariables
+  AppVariables,
+  GamesMetadata
 };

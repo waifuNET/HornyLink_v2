@@ -1,5 +1,5 @@
 const { ipcMain } = require('electron');
-const { LanguageVariables, ApplicationSettings } = require('../../state');
+const { LanguageVariables, ApplicationSettings, LocalUserBase } = require('../../state');
 const { Auth } = require('../auth/auth');
 const WindowUtils = require('../../utils/windowUtils');
 
@@ -21,6 +21,15 @@ function setupIpcHandlers_auth() {
     ipcMain.handle('telegram-reset-password', async (event, key, newPassword) => {
         const result = await Auth.telegramResetPassword(key, newPassword);
         return result;
+    });
+
+    // Получение текущего пользователя
+    ipcMain.handle('get-current-user', () => {
+        return {
+            id: LocalUserBase.id,
+            username: LocalUserBase.username,
+            premium_until: LocalUserBase.premium_until
+        };
     });
 }
 

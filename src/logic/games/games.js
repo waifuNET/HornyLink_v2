@@ -1,4 +1,4 @@
-const { GameCollection, LanguageVariables, AppVariables } = require('../../state');
+const { GameCollection, LanguageVariables, AppVariables, GamesMetadata } = require('../../state');
 const { Auth } = require('../auth/auth');
 const { fetch, hasInternetConnection } = require('../../utils/internetUtils');
 const globalUtils = require('../../utils/globalUtils');
@@ -43,6 +43,9 @@ class Games {
     } catch (err) {
       console.error('[GAMES] Ошибка инициализации gameImagesManager:', err);
     }
+    
+    // Загружаем метаданные игр (дата последнего запуска и т.д.)
+    GamesMetadata.load();
     
     // Загружаем сохраненные установленные игры
     GameCollection.loadInstalledGames();
@@ -391,12 +394,18 @@ class Games {
                 // Проверяем, что исполняемый файл существует
                 const fullExePath = await Games.findMainExecutable(gameInstallPath, gameInfo.title, gameInfo.exe_name, gameInfo.engine);
                 if (fs.existsSync(fullExePath.exe)) {
+                  
+                  // Загружаем метаданные из отдельного хранилища
+                  const metadata = GamesMetadata.getGameMetadata(gameInfo.id);
 
                   const gameObject = {
                     ...gameInfo,
                     isInstalled: true,
                     installPath: gameInstallPath,
-                    executablePath: fullExePath
+                    executablePath: fullExePath,
+                    // Применяем метаданные если они есть
+                    lastPlayDate: metadata?.lastPlayDate || gameInfo.lastPlayDate || null,
+                    playtime: metadata?.playtime || gameInfo.playtime || null
                   }
                   
                   GameCollection.addOrUpdateInstalledGame(gameObject);
@@ -520,7 +529,7 @@ class Games {
         GameCollection.addComment(comment);
       });
 
-      console.log(`[GAMES] Загружено ${data.length} комментариев для игры ${gameId}.`);
+      //console.log(`[GAMES] Загружено ${data.length} комментариев для игры ${gameId}.`);
 
       return data;
     } catch (err) {
@@ -531,6 +540,212 @@ class Games {
 
   static getGameComments(gameId) {
     return GameCollection.getCommentsByGameId(gameId);
+  }
+
+  /**
+   * Добавляет комментарий к игре
+   * @param {number} gameId - ID игры
+   * @param {string} content - Текст комментария (макс 256 символов)
+   * @returns {Promise<Object>} - Результат добавления комментария
+   */
+  static async addComment(gameId, content) {
+    try {
+      if (!AppVariables.isOnline) {
+        return { success: false, error: 'Нет интернет соединения' };
+      }
+
+      if (!content || content.trim().length === 0) {
+        return { success: false, error: 'Комментарий не может быть пустым' };
+      }
+
+      if (content.length > 256) {
+        return { success: false, error: 'Комментарий слишком длинный (максимум 256 символов)' };
+      }
+
+      const response = await fetch(`${SERVER_URL}/comments/add_comment`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': Auth.getCookie()
+        },
+        body: JSON.stringify({
+          gameId: gameId,
+          content: content.trim()
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`[GAMES] Комментарий успешно добавлен к игре ${gameId}`);
+        return { success: true, commentId: data.commentId };
+      } else {
+        return { success: false, error: data.error || 'Неизвестная ошибка' };
+      }
+    } catch (err) {
+      console.error(`[GAMES] Ошибка добавления комментария:`, err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Удаляет комментарий (только свой)
+   * @param {number} commentId - ID комментария
+   * @returns {Promise<Object>} - Результат удаления
+   */
+  static async deleteComment(commentId) {
+    try {
+      if (!AppVariables.isOnline) {
+        return { success: false, error: 'Нет интернет соединения' };
+      }
+
+      const response = await fetch(`${SERVER_URL}/comments/${commentId}`, {
+        method: 'DELETE',
+        headers: {
+          'Cookie': Auth.getCookie()
+        }
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        console.log(`[GAMES] Комментарий ${commentId} успешно удалён`);
+        return { success: true };
+      } else {
+        return { success: false, error: data.error || 'Нет прав на удаление' };
+      }
+    } catch (err) {
+      console.error(`[GAMES] Ошибка удаления комментария:`, err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Удаляет игру с диска и из коллекции
+   * @param {number} gameId - ID игры
+   * @returns {Promise<Object>} - Результат удаления
+   */
+  static async deleteGame(gameId) {
+    try {
+      const installedGame = GameCollection.getInstalledGameById(gameId);
+      
+      if (!installedGame) {
+        return { success: false, error: 'Игра не установлена' };
+      }
+
+      const gameInfo = await this.gameInstalledInfo(gameId);
+      const installPath = gameInfo.installPath;
+      const drivePath = installPath.split(path.sep)[0] + path.sep;
+      const gameTitle = installedGame.title;
+
+      console.log(`[GAMES] Удаление игры ${gameTitle} (ID: ${gameId}) из ${installPath}`);
+
+      // Закрываем игру если она запущена
+      if (Games.runningGames.has(gameId)) {
+        await this.closeGame(gameId);
+      }
+
+      // Удаляем ярлыки
+      await this.deleteDesktopShortcut(gameTitle);
+      await this.deleteStartMenuShortcut(gameTitle);
+
+      // Удаляем папку игры
+      if (fs.existsSync(installPath)) {
+        await fs.promises.rm(installPath, { recursive: true, force: true });
+        console.log(`[GAMES] Папка игры удалена: ${installPath}`);
+      }
+
+      // Удаляем JSON файл с информацией об игре
+      this.deleteGameInfo(gameId, drivePath);
+
+      // Удаляем локальные изображения
+      gameImagesManager.deleteGameImages(drivePath, gameId);
+
+      // Удаляем из коллекции установленных игр
+      GameCollection.removeInstalledGame(gameId);
+      GameCollection.saveInstalledGames();
+
+      console.log(`[GAMES] Игра ${gameId} успешно удалена`);
+      return { success: true };
+    } catch (err) {
+      console.error(`[GAMES] Ошибка удаления игры:`, err);
+      return { success: false, error: err.message };
+    }
+  }
+
+  /**
+   * Удаляет ярлык с рабочего стола
+   */
+  static async deleteDesktopShortcut(shortcutName) {
+    try {
+      let desktopPath = path.join(os.homedir(), 'Desktop');
+      
+      // Проверяем альтернативный путь (OneDrive Desktop)
+      if (!fs.existsSync(desktopPath)) {
+        const oneDriveDesktop = path.join(os.homedir(), 'OneDrive', 'Desktop');
+        if (fs.existsSync(oneDriveDesktop)) {
+          desktopPath = oneDriveDesktop;
+        }
+      }
+      
+      const shortcutPath = path.join(desktopPath, `${shortcutName}.lnk`);
+      
+      if (fs.existsSync(shortcutPath)) {
+        fs.unlinkSync(shortcutPath);
+        console.log(`[GAMES] Ярлык удалён с рабочего стола: ${shortcutPath}`);
+        return true;
+      } else {
+        console.log(`[GAMES] Ярлык на рабочем столе не найден: ${shortcutPath}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`[GAMES] Ошибка удаления ярлыка с рабочего стола:`, error);
+      return false;
+    }
+  }
+
+  /**
+   * Удаляет ярлык из меню "Пуск"
+   */
+  static async deleteStartMenuShortcut(shortcutName) {
+    try {
+      const startMenuPath = path.join(
+        os.homedir(), 
+        'AppData', 
+        'Roaming', 
+        'Microsoft', 
+        'Windows', 
+        'Start Menu', 
+        'Programs',
+        'HornyLibrary'
+      );
+      
+      const shortcutPath = path.join(startMenuPath, `${shortcutName}.lnk`);
+      
+      if (fs.existsSync(shortcutPath)) {
+        fs.unlinkSync(shortcutPath);
+        console.log(`[GAMES] Ярлык удалён из меню Пуск: ${shortcutPath}`);
+        
+        // Проверяем, пуста ли папка HornyLibrary, и удаляем её если пуста
+        try {
+          const files = fs.readdirSync(startMenuPath);
+          if (files.length === 0) {
+            fs.rmdirSync(startMenuPath);
+            console.log(`[GAMES] Папка HornyLibrary удалена из меню Пуск`);
+          }
+        } catch (err) {
+          // Игнорируем ошибки при проверке/удалении папки
+        }
+        
+        return true;
+      } else {
+        console.log(`[GAMES] Ярлык в меню Пуск не найден: ${shortcutPath}`);
+        return false;
+      }
+    } catch (error) {
+      console.error(`[GAMES] Ошибка удаления ярлыка из меню Пуск:`, error);
+      return false;
+    }
   }
 
   /**

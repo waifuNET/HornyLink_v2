@@ -45,6 +45,7 @@ build/
 builds/
 jspm_packages/
 HornyLink_Setup.exe
+api.md
 
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/

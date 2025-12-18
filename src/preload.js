@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
         tryAuth: (login, password) => ipcRenderer.invoke('try-auth', login, password),
         telegramRegistration: (username, password, email) => ipcRenderer.invoke('telegram-registration', username, password, email),
         telegramResetPassword: (key, newPassword) => ipcRenderer.invoke('telegram-reset-password', key, newPassword),
+        getCurrentUser: () => ipcRenderer.invoke('get-current-user'),
     },
 
     games:{
@@ -41,6 +42,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
         getOnlineStatus: () => ipcRenderer.invoke('get-online-status'),
         syncGames: () => ipcRenderer.invoke('sync-games'),
 
+        // Комментарии
+        addComment: (gameId, content) => ipcRenderer.invoke('add-comment', gameId, content),
+        deleteComment: (commentId) => ipcRenderer.invoke('delete-comment', commentId),
+        
+        // Удаление игры
+        deleteGame: (gameId) => ipcRenderer.invoke('delete-game', gameId),
+
         // Events //
         universalEvent: (callback) => ipcRenderer.on('callback-universal', (event, value) => {
             callback(value);
@@ -49,6 +57,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     os:{
         getDriveInfo: () => ipcRenderer.invoke('get-drive-info'),
+        showGameLocation: (gameId) => ipcRenderer.invoke('show-game-location', gameId),
     },
 
     // CFG

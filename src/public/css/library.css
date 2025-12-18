@@ -339,6 +339,96 @@
 .comment-action:hover {
     color: var(--text-primary);
 }
+
+.comment-action.comment-delete {
+    color: #ff5757;
+}
+
+.comment-action.comment-delete:hover {
+    color: #ff3030;
+}
+
+/* Форма для добавления комментария */
+.comment-form {
+    background-color: var(--bg-container);
+    border-radius: var(--border-radius);
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.comment-textarea {
+    width: 100%;
+    min-height: 80px;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-family: inherit;
+    padding: 12px;
+    resize: vertical;
+    transition: all var(--transition-fast);
+    outline: none;
+    box-sizing: border-box;
+}
+
+.comment-textarea:focus {
+    background-color: var(--bg-input-focus);
+    border-color: var(--accent-primary);
+}
+
+.comment-textarea::placeholder {
+    color: var(--text-secondary);
+}
+
+.comment-form-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.char-counter {
+    font-size: 12px;
+    color: var(--text-dim);
+}
+
+.char-counter.warning {
+    color: #ffa500;
+}
+
+.char-counter.limit {
+    color: #ff5757;
+}
+
+.btn-submit-comment {
+    background-color: var(--accent-primary);
+    color: var(--text-primary);
+    border: none;
+    padding: 8px 20px;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-submit-comment:hover:not(:disabled) {
+    background-color: var(--accent-primary-hover);
+}
+
+.btn-submit-comment:disabled {
+    background-color: var(--bg-input);
+    color: var(--text-secondary);
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+#comments-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
 .activity-item.achievement {
     border-left-color: #ffd700;
 }
@@ -858,6 +948,53 @@
     align-items: center;
     gap: 8px;
     transition: background-color var(--transition-fast);
+    position: relative;
+}
+
+.btn-more:hover {
+    background-color: #4fa352;
+}
+
+/* Выпадающий список для btn-more */
+.btn-more-dropdown {
+    position: absolute;
+    top: calc(100% + 5px);
+    left: 0;
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
+    min-width: 200px;
+    overflow: hidden;
+}
+
+.dropdown-item {
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 14px;
+    cursor: pointer;
+    transition: background-color var(--transition-fast);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.dropdown-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.dropdown-item.delete-item {
+    color: #ff5757;
+}
+
+.dropdown-item.delete-item:hover {
+    background-color: rgba(255, 87, 87, 0.1);
+}
+
+.game-play-btns {
+    position: relative;
+    display: flex;
 }
 #footer {
     height: var(--footer-height);
@@ -988,4 +1125,81 @@
     border-radius: 3px;
     transition: width 0.3s ease;
     width: 0%;
+}
+
+/* Диалог подтверждения */
+.confirm-dialog-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    opacity: 1;
+    transition: opacity var(--transition-fast);
+}
+
+.confirm-dialog {
+    background: var(--bg-container);
+    border-radius: var(--border-radius-medium);
+    width: 90%;
+    max-width: 400px;
+    padding: 24px;
+    box-shadow: var(--shadow-modal);
+}
+
+.confirm-dialog-title {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+}
+
+.confirm-dialog-message {
+    font-size: 14px;
+    color: var(--text-secondary);
+    line-height: 1.6;
+    margin-bottom: 24px;
+}
+
+.confirm-dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.btn-confirm-cancel {
+    background: var(--bg-button-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-primary);
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-confirm-cancel:hover {
+    background: var(--bg-hover);
+}
+
+.btn-confirm-delete {
+    background: #ff5757;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: var(--border-radius);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-confirm-delete:hover {
+    background: #ff3030;
 }

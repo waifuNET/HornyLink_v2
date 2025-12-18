@@ -340,12 +340,21 @@ function loadScreenshots() {
 }
 
 // Загрузка комментариев
-function loadComments() {
-    const container = document.getElementById('activity-content');
+async function loadComments() {
+    const commentsList = document.getElementById('comments-list');
     
     if (state.comments.length === 0) {
-        container.innerHTML = '<h2>Лента активности</h2><div class="loading">Нет комментариев</div>';
+        commentsList.innerHTML = '<div class="loading">Нет комментариев</div>';
         return;
+    }
+    
+    // Получаем ID текущего пользователя
+    let currentUserId = null;
+    try {
+        const userInfo = await window.electronAPI.auth.getCurrentUser();
+        currentUserId = userInfo?.id || null;
+    } catch (error) {
+        console.warn('Не удалось получить ID пользователя:', error);
     }
     
     const sortedComments = [...state.comments].sort((a, b) => 
@@ -353,6 +362,9 @@ function loadComments() {
     );
     const commentsHtml = sortedComments.map(comment => {
         const date = formatCommentDate(comment.created_at);
+        const isOwnComment = currentUserId && comment.user_id === currentUserId;
+        const deleteButton = isOwnComment ? `<div class="comment-action comment-delete" data-comment-id="${comment.id}">🗑️ Удалить</div>` : '';
+        
         return `
             <div class="comment" data-comment-id="${comment.id}">
                 <div class="comment-header">
@@ -367,12 +379,18 @@ function loadComments() {
                     <div class="comment-action">👍 0</div>
                     <div class="comment-action">💬 Ответить</div>
                     <div class="comment-action">⚠ Пожаловаться</div>
+                    ${deleteButton}
                 </div>
             </div>
         `;
     }).join('');
     
-    container.innerHTML = `<h2>Лента активности</h2>${commentsHtml}`;
+    commentsList.innerHTML = commentsHtml;
+    
+    // Добавляем обработчики для кнопок удаления
+    document.querySelectorAll('.comment-delete').forEach(btn => {
+        btn.addEventListener('click', handleDeleteComment);
+    });
 }
 
 // Переключение табов
@@ -408,6 +426,218 @@ document.querySelectorAll('.tab').forEach(tab => {
         switchTab(tab.dataset.tab);
     });
 });
+
+// ============ Обработчики комментариев ============
+
+// Счётчик символов в комментарии
+const commentInput = document.getElementById('comment-input');
+const charCount = document.getElementById('char-count');
+const submitButton = document.getElementById('btn-submit-comment');
+const charCounter = document.querySelector('.char-counter');
+
+commentInput.addEventListener('input', () => {
+    const length = commentInput.value.length;
+    charCount.textContent = length;
+    
+    // Обновление стилей счётчика
+    charCounter.classList.remove('warning', 'limit');
+    if (length > 230) {
+        charCounter.classList.add('warning');
+    }
+    if (length > 250) {
+        charCounter.classList.add('limit');
+    }
+    
+    // Активация кнопки отправки
+    submitButton.disabled = length === 0 || length > 256;
+});
+
+// Отправка комментария
+submitButton.addEventListener('click', async () => {
+    const content = commentInput.value.trim();
+    if (!content || !state.currentGameId) return;
+    
+    try {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Отправка...';
+        
+        const result = await window.electronAPI.games.addComment(state.currentGameId, content);
+        
+        if (result.success) {
+            // Очистка формы
+            commentInput.value = '';
+            charCount.textContent = '0';
+            charCounter.classList.remove('warning', 'limit');
+            
+            // Перезагрузка комментариев
+            const comments = await window.electronAPI.games.getGameComments(state.currentGameId);
+            state.comments = comments || [];
+            loadComments();
+        } else {
+            alert('Ошибка при отправке комментария: ' + (result.error || 'Неизвестная ошибка'));
+        }
+    } catch (error) {
+        console.error('Ошибка отправки комментария:', error);
+        alert('Не удалось отправить комментарий');
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = 'Отправить';
+    }
+});
+
+// ============ Удаление комментария ============
+
+async function handleDeleteComment(event) {
+    const commentId = parseInt(event.currentTarget.dataset.commentId);
+    
+    if (!commentId) return;
+    
+    // Показываем диалог подтверждения
+    showConfirmDialog(
+        'Удалить комментарий?',
+        'Вы действительно хотите удалить этот комментарий? Это действие нельзя отменить.',
+        async () => {
+            try {
+                const result = await window.electronAPI.games.deleteComment(commentId);
+                
+                if (result.success) {
+                    // Удаляем комментарий из состояния
+                    state.comments = state.comments.filter(c => c.id !== commentId);
+                    
+                    // Перезагружаем список комментариев
+                    await loadComments();
+                    
+                    console.log(`Комментарий ${commentId} успешно удалён`);
+                } else {
+                    alert('Ошибка при удалении комментария: ' + (result.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка удаления комментария:', error);
+                alert('Не удалось удалить комментарий');
+            }
+        }
+    );
+}
+
+// ============ Обработчики btn-more ============
+
+const btnMore = document.getElementById('btn-more');
+const dropdown = document.getElementById('btn-more-dropdown');
+
+// Переключение выпадающего списка
+btnMore.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isVisible = dropdown.style.display === 'block';
+    dropdown.style.display = isVisible ? 'none' : 'block';
+});
+
+// Закрытие при клике вне списка
+document.addEventListener('click', (e) => {
+    if (!btnMore.contains(e.target) && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+    }
+});
+
+// Показать расположение игры
+document.getElementById('show-location').addEventListener('click', async () => {
+    dropdown.style.display = 'none';
+    
+    if (!state.currentGameId) return;
+    
+    try {
+        await window.electronAPI.os.showGameLocation(state.currentGameId);
+    } catch (error) {
+        console.error('Ошибка при открытии расположения:', error);
+        alert('Не удалось открыть расположение игры');
+    }
+});
+
+// Удалить игру
+document.getElementById('delete-game').addEventListener('click', () => {
+    dropdown.style.display = 'none';
+    
+    if (!state.currentGameId) return;
+    
+    const game = state.games.find(g => g.id === state.currentGameId);
+    if (!game) return;
+    
+    showConfirmDialog(
+        'Удалить игру?',
+        `Вы действительно хотите удалить "${game.title}"? Это действие нельзя отменить.`,
+        async () => {
+            try {
+                const result = await window.electronAPI.games.deleteGame(state.currentGameId);
+                
+                if (result.success) {
+                    // Обновляем список игр
+                    await updateInfo();
+                    
+                    // Выбираем первую игру или очищаем
+                    if (state.games.length > 0) {
+                        selectGame(state.games[0].id);
+                    } else {
+                        state.currentGameId = null;
+                    }
+                } else {
+                    alert('Ошибка при удалении игры: ' + (result.error || 'Неизвестная ошибка'));
+                }
+            } catch (error) {
+                console.error('Ошибка удаления игры:', error);
+                alert('Не удалось удалить игру');
+            }
+        }
+    );
+});
+
+// ============ Диалог подтверждения ============
+
+function showConfirmDialog(title, message, onConfirm) {
+    // Удаляем существующий диалог если есть
+    const existing = document.getElementById('confirm-dialog');
+    if (existing) existing.remove();
+    
+    const dialog = document.createElement('div');
+    dialog.id = 'confirm-dialog';
+    dialog.className = 'confirm-dialog-overlay';
+    
+    dialog.innerHTML = `
+        <div class="confirm-dialog">
+            <div class="confirm-dialog-title">${title}</div>
+            <div class="confirm-dialog-message">${message}</div>
+            <div class="confirm-dialog-actions">
+                <button class="btn-confirm-cancel" id="confirm-cancel">Отмена</button>
+                <button class="btn-confirm-delete" id="confirm-delete">Удалить</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(dialog);
+    
+    // Обработчики
+    document.getElementById('confirm-cancel').addEventListener('click', () => {
+        closeConfirmDialog();
+    });
+    
+    document.getElementById('confirm-delete').addEventListener('click', () => {
+        closeConfirmDialog();
+        if (onConfirm) onConfirm();
+    });
+    
+    // Закрытие по клику на overlay
+    dialog.addEventListener('click', (e) => {
+        if (e.target === dialog) {
+            closeConfirmDialog();
+        }
+    });
+}
+
+function closeConfirmDialog() {
+    const dialog = document.getElementById('confirm-dialog');
+    if (dialog) {
+        dialog.style.opacity = '0';
+        setTimeout(() => dialog.remove(), 200);
+    }
+}
 
 // ============ Диалог установки ============
 
