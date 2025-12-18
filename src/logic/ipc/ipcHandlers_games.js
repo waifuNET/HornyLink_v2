@@ -1,9 +1,22 @@
 const { ipcMain } = require('electron');
-const { GameCollection } = require('../../state')
+const { GameCollection, AppVariables } = require('../../state')
 const Games = require('../games/games')
+const gameImagesManager = require('../cache/gameImagesManager');
+
+// Преобразование Windows пути в file:// URL
+function pathToFileUrl(filePath) {
+    if (!filePath) return null;
+    // Заменяем обратные слеши на прямые и добавляем file:///
+    const normalizedPath = filePath.replace(/\\/g, '/');
+    return `file:///${normalizedPath}`;
+}
 
 function setupIpcHandlers_games(win) {
     ipcMain.handle('get-all-games', (event) => {
+        // Если офлайн, возвращаем только установленные игры
+        if (!AppVariables.isOnline) {
+            return GameCollection.getInstalledGames();
+        }
         return GameCollection.getAllGames();
     });
 
@@ -11,28 +24,63 @@ function setupIpcHandlers_games(win) {
         return GameCollection.getGameById(id);
     });
 
+    // Получение лого с приоритетом локальных изображений
     ipcMain.handle('get-game-logo', (event, id) => {
+        // Сначала проверяем локальные изображения
+        const localLogo = gameImagesManager.getLocalLogo(id);
+        if (localLogo) {
+            // Возвращаем file:// URL для локального файла
+            return pathToFileUrl(localLogo);
+        }
+        
+        // Если нет локального - берём из коллекции (онлайн)
         return GameCollection.getGameLogo(id);
     });
 
+    // Получение скриншотов с приоритетом локальных
     ipcMain.handle('get-game-screenshots', (event, id) => {
+        // Сначала проверяем локальные изображения
+        const localScreenshots = gameImagesManager.getLocalScreenshots(id);
+        if (localScreenshots.length > 0) {
+            return localScreenshots.map(p => pathToFileUrl(p));
+        }
+        
+        // Если нет локальных - берём из коллекции (онлайн)
         return GameCollection.getGameScreenshots(id);
     });
 
+    // Получение иконки с приоритетом локальных
     ipcMain.handle('get-game-icon', (event, id) => {
+        // Сначала проверяем локальные изображения
+        const localIcon = gameImagesManager.getLocalIcon(id);
+        if (localIcon) {
+            return pathToFileUrl(localIcon);
+        }
+        
         return GameCollection.getGameIcon(id);
     });
 
     ipcMain.handle('get-game-comments', async (event, gameId) =>{
+        // Комментарии доступны только онлайн
+        if (!AppVariables.isOnline) {
+            return [];
+        }
         const comments = await Games.loadComments(gameId);
         return comments;
     });
 
     ipcMain.handle('get-file-size', async (event, gameId) => {
+        // Размер файла доступен только онлайн
+        if (!AppVariables.isOnline) {
+            return null;
+        }
         return await GameCollection.getGameSize(gameId);
     });
 
     ipcMain.handle('download-game', async (event, createDesktopShortcut, createStartMenuShortcut, drivePath, gameId, gameTitle) => {
+        if (!AppVariables.isOnline) {
+            throw new Error('Загрузка недоступна в офлайн режиме');
+        }
         return Games.downloadAndInstallGame(createDesktopShortcut, createStartMenuShortcut, drivePath, gameId, gameTitle, Games.currentDownloadProgressCallback);
     });
 
@@ -70,6 +118,28 @@ function setupIpcHandlers_games(win) {
         const runningGame = Games.runningGames.get(gameId);
         return { 
             gameIsRunning: !!runningGame 
+        }
+    });
+    
+    // Получение статуса онлайн/офлайн
+    ipcMain.handle('get-online-status', () => {
+        return {
+            isOnline: AppVariables.isOnline,
+            lastCheck: AppVariables.lastOnlineCheck
+        };
+    });
+    
+    // Принудительная синхронизация с сервером
+    ipcMain.handle('sync-games', async () => {
+        if (!AppVariables.isOnline) {
+            return { success: false, error: 'Нет интернет соединения' };
+        }
+        
+        try {
+            await Games.updateGames();
+            return { success: true, gamesCount: GameCollection.getCount() };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
     });
 }

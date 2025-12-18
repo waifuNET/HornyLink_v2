@@ -10,5 +10,13 @@ module.exports = {
     telegramBotName_clear: 'HornyLinkBot',
 
     dataAuthPath: path.join(app.getPath('userData'), 'auth.json'),
-    applicationSettingsPath: path.join(app.getPath('userData'), 'settings.json')
+    applicationSettingsPath: path.join(app.getPath('userData'), 'settings.json'),
+    
+    // Настройки кэширования
+    cache: {
+        defaultRamCacheSize: 256 * 1024 * 1024,   // 256 MB
+        defaultDiskCacheSize: 1024 * 1024 * 1024, // 1 GB
+        maxDiskCacheSize: 2 * 1024 * 1024 * 1024, // 2 GB (максимум)
+        minDiskCacheSize: 100 * 1024 * 1024       // 100 MB (минимум)
+    }
 }

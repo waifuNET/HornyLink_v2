@@ -36,6 +36,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
         status: (gameId) => ipcRenderer.invoke('status', gameId),
         
         getCurrentDownloadProgress: () => ipcRenderer.invoke('get-current-download-progress'),
+        
+        // офлайн/онлайн режим
+        getOnlineStatus: () => ipcRenderer.invoke('get-online-status'),
+        syncGames: () => ipcRenderer.invoke('sync-games'),
 
         // Events //
         universalEvent: (callback) => ipcRenderer.on('callback-universal', (event, value) => {

@@ -9,6 +9,8 @@ const state = {
     logo: '',
     comments: [],
     availableDrives: [],
+    isOnline: true,
+    isSyncing: false
 };
 
 // Группировка игр по периодам
@@ -706,16 +708,97 @@ async function updateInfo(){
         }
 }
 
-// Event subscrabers //
+// Обновление UI при изменении онлайн статуса
+function updateOnlineStatusUI() {
+    const offlineIndicator = document.getElementById('offline-indicator');
+    const syncButton = document.getElementById('sync-button');
+    
+    if (!state.isOnline) {
+        // Показываем индикатор офлайн режима
+        if (!offlineIndicator) {
+            const indicator = document.createElement('div');
+            indicator.id = 'offline-indicator';
+            indicator.className = 'offline-indicator';
+            indicator.innerHTML = '🔴 Офлайн режим';
+            document.body.appendChild(indicator);
+        }
+        if (syncButton) syncButton.disabled = true;
+    } else {
+        // Скрываем индикатор
+        if (offlineIndicator) {
+            offlineIndicator.remove();
+        }
+        if (syncButton) syncButton.disabled = false;
+    }
+}
+
+// Функция синхронизации с сервером
+async function syncWithServer() {
+    if (state.isSyncing || !state.isOnline) return;
+    
+    state.isSyncing = true;
+    console.log('[Library] Начата синхронизация с сервером...');
+    
+    try {
+        const result = await window.electronAPI.games.syncGames();
+        
+        if (result.success) {
+            await InitGamesState(true);
+            console.log(`[Library] Синхронизация завершена. Игр: ${result.gamesCount}`);
+        } else {
+            console.warn('[Library] Ошибка синхронизации:', result.error);
+        }
+    } catch (error) {
+        console.error('[Library] Ошибка синхронизации:', error);
+    } finally {
+        state.isSyncing = false;
+    }
+}
+
+// Event subscribers //
 window.electronAPI.games.universalEvent(async (value) => {
     switch(value.event){
         case "gameInstalled":
             await updateInfo();
-        break;
+            break;
+            
+        case "gameLaunched":
+            console.log(`[Library] Игра запущена: ${value.gameTitle}`);
+            if (state.currentGameId === value.gameId) {
+                await mainButtonsController(value.gameId);
+            }
+            break;
+            
+        case "gameLaunchFailed":
+            console.error(`[Library] Ошибка запуска игры: ${value.error}`);
+            alert(`Не удалось запустить игру: ${value.error}`);
+            break;
+            
+        case "onlineStatusChanged":
+            state.isOnline = value.isOnline;
+            updateOnlineStatusUI();
+            
+            if (value.isOnline) {
+                // Интернет вернулся - синхронизируем
+                console.log('[Library] Интернет восстановлен, синхронизация...');
+                await syncWithServer();
+            }
+            break;
     }
 });
 
 async function InitGamesState(stayOnOpenGame = false){
+    const container = document.getElementById('games-list');
+    
+    // Проверяем онлайн статус
+    try {
+        const onlineStatus = await window.electronAPI.games.getOnlineStatus();
+        state.isOnline = onlineStatus.isOnline;
+        updateOnlineStatusUI();
+    } catch (e) {
+        console.warn('[Library] Не удалось получить статус онлайн:', e);
+    }
+    
     let games;
     if (window.electronAPI && window.electronAPI.games) {
         games = await window.electronAPI.games.getAllGames();
@@ -749,9 +832,40 @@ async function init() {
     try {
         await InitGamesState();
         startGameWatcher();
+        startDownloadProgressWatcher();
     } catch (error) {
         console.error('Ошибка загрузки игр:', error);
         container.innerHTML = '<div class="loading">Ошибка загрузки игр</div>';
+    }
+}
+
+// Наблюдатель за прогрессом загрузки
+let downloadWatcherInterval = null;
+
+function startDownloadProgressWatcher() {
+    downloadWatcherInterval = setInterval(async () => {
+        try {
+            const progress = await window.electronAPI.games.getCurrentDownloadProgress();
+            
+            if (progress.downloadStatus && progress.gameId) {
+                // Обновляем UI прогресса загрузки
+                updateDownloadProgressUI(progress);
+            }
+        } catch (error) {
+            // Игнорируем ошибки
+        }
+    }, 1000);
+}
+
+function updateDownloadProgressUI(progress) {
+    const progressBar = document.getElementById('download-progress-bar');
+    const progressText = document.getElementById('download-progress-text');
+    
+    if (progressBar) {
+        progressBar.style.width = `${progress.progress}%`;
+    }
+    if (progressText) {
+        progressText.textContent = `${progress.gameTitle}: ${progress.progress}%`;
     }
 }
 
@@ -788,7 +902,7 @@ function startGameWatcher() {
                 await updateGamesList(state.games);
                 
                 if (state.currentGameId && updatedGames.find(g => g.id === state.currentGameId)) {
-                    await selectGame(state.currentGameId);
+                    await selectGame(state.currentGameId, true);
                 }
                 
                 console.log(`Обнаружено изменений: ${newGames.length} новых, ${updatedGames.length} обновленных`);
@@ -802,6 +916,9 @@ function startGameWatcher() {
 window.addEventListener('beforeunload', () => {
     if (watcherInterval) {
         clearInterval(watcherInterval);
+    }
+    if (downloadWatcherInterval) {
+        clearInterval(downloadWatcherInterval);
     }
 });
 

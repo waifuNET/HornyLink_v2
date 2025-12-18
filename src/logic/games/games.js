@@ -1,6 +1,6 @@
-const { GameCollection, LanguageVariables } = require('../../state');
+const { GameCollection, LanguageVariables, AppVariables } = require('../../state');
 const { Auth } = require('../auth/auth');
-const { fetch } = require('../../utils/internetUtils');
+const { fetch, hasInternetConnection } = require('../../utils/internetUtils');
 const globalUtils = require('../../utils/globalUtils');
 const osUtils = require('../../utils/osUtils');
 const { downloadFile, extractArchive, setProgressCallback, pauseDownload, resumeDownload, stopDownload } = require('../other/download');
@@ -13,7 +13,9 @@ const windowManager = require('../../windowManager');
 const ws = require('windows-shortcuts');
 const os = require('os');
 const { spawn } = require('child_process');
-const { SERVER_URL } = require('../../cfg')
+const { SERVER_URL } = require('../../cfg');
+const imageCache = require('../cache/imageCache');
+const gameImagesManager = require('../cache/gameImagesManager');
 
 const URLS = {
   myLibrary: `${SERVER_URL}/library/`,
@@ -22,12 +24,108 @@ const URLS = {
 
 class Games {
   static async Init() {
+    // Инициализируем кэш изображений
+    const { ApplicationSettings } = require('../../state');
+    const cacheSettings = ApplicationSettings.getCacheSettings();
+    
+    try {
+      await imageCache.init({
+        maxRamCacheSize: cacheSettings.ramSize,
+        maxDiskCacheSize: cacheSettings.diskSize
+      });
+    } catch (err) {
+      console.error('[GAMES] Ошибка инициализации imageCache:', err);
+    }
+    
+    // Инициализируем менеджер локальных изображений
+    try {
+      await gameImagesManager.init();
+    } catch (err) {
+      console.error('[GAMES] Ошибка инициализации gameImagesManager:', err);
+    }
+    
     // Загружаем сохраненные установленные игры
     GameCollection.loadInstalledGames();
-    // Обновляем игры с сервера (объединяем с сохраненными)
-    await this.updateGames();
+    
+    // Проверяем интернет соединение
+    const isOnline = await hasInternetConnection();
+    AppVariables.setOnlineStatus(isOnline);
+    
+    if (isOnline) {
+      // Обновляем игры с сервера (объединяем с сохраненными)
+      await this.updateGames();
+      
+      // Скачиваем изображения для установленных игр, у которых их нет
+      await this.downloadMissingGameImages();
+    } else {
+      console.log('[GAMES] Офлайн режим - загружены только установленные игры');
+    }
+    
     // Сканируем диски на наличие установленных игр (дополнительно)
     await this.scanInstalledGames();
+    
+    // Запускаем периодическую проверку интернета
+    this._startOnlineChecker();
+  }
+  
+  /**
+   * Скачивает изображения для установленных игр, у которых их нет локально
+   */
+  static async downloadMissingGameImages() {
+    const installedGames = GameCollection.getInstalledGames();
+    
+    for (const game of installedGames) {
+      // Проверяем есть ли локальные изображения
+      if (!gameImagesManager.hasLocalImages(game.id)) {
+        // Получаем данные игры с изображениями
+        const gameData = GameCollection.getGameById(game.id);
+        
+        if (gameData && gameData.images && gameData.images.length > 0 && gameData.installPath) {
+          const drivePath = gameData.installPath.split(path.sep)[0] + path.sep;
+          
+          try {
+            console.log(`[GAMES] Скачивание изображений для установленной игры: ${gameData.title}`);
+            await gameImagesManager.saveGameImages(drivePath, game.id, gameData.images);
+          } catch (error) {
+            console.warn(`[GAMES] Не удалось скачать изображения для ${gameData.title}:`, error.message);
+          }
+        }
+      }
+    }
+  }
+  
+  /**
+   * Периодическая проверка интернет соединения
+   */
+  static _onlineCheckerInterval = null;
+  static _startOnlineChecker() {
+    if (this._onlineCheckerInterval) {
+      clearInterval(this._onlineCheckerInterval);
+    }
+    
+    this._onlineCheckerInterval = setInterval(async () => {
+      const wasOnline = AppVariables.isOnline;
+      const isOnline = await hasInternetConnection();
+      const statusChanged = AppVariables.setOnlineStatus(isOnline);
+      
+      if (statusChanged && isOnline && !wasOnline) {
+        // Вернулся интернет - обновляем данные
+        console.log('[GAMES] Интернет восстановлен - обновляем данные');
+        await this.updateGames();
+        
+        // Уведомляем frontend
+        windowManager.send('callback-universal', { 
+          event: "onlineStatusChanged", 
+          isOnline: true 
+        });
+      } else if (statusChanged && !isOnline) {
+        // Интернет пропал
+        windowManager.send('callback-universal', { 
+          event: "onlineStatusChanged", 
+          isOnline: false 
+        });
+      }
+    }, 30000); // Каждые 30 секунд
   }
 
   static runningGames = new Map();
@@ -387,8 +485,9 @@ class Games {
       const serverGames = data.map(game => ({
         ...game,
         size: null,
-        lastPlayDate: null,
-        playtime: (game.playtime / 60).toFixed(1),
+        // Не перезаписываем lastPlayDate если он есть на сервере
+        lastPlayDate: game.lastPlayDate || null,
+        playtime: game.playtime ? (game.playtime / 60).toFixed(1) : null,
         isInstalled: false,
         installPath: "",
         executablePath: ""
@@ -861,12 +960,23 @@ class Games {
 
       // Сохраняем информацию в JSON файл (для совместимости)
       this.saveGameInfo(gameId, game, drivePath);
+      
+      // Сохраняем изображения игры локально
+      if (game.images && game.images.length > 0) {
+        try {
+          console.log(`[GAMES] Сохранение изображений игры ${gameTitle}...`);
+          await gameImagesManager.saveGameImages(drivePath, gameId, game.images);
+        } catch (imgError) {
+          console.warn(`[GAMES] Не удалось сохранить изображения: ${imgError.message}`);
+        }
+      }
 
       console.log(`[GAMES] ✓ Игра успешно установлена: ${gameTitle}`);
 
-      this.downloading = false;
-
       windowManager.send('callback-universal', { event: "gameInstalled", gameId: gameId });
+      
+      // Сбрасываем данные загрузки после успешной установки
+      Games.clearDownloadingData();
       
       return {
         success: true,
@@ -877,16 +987,10 @@ class Games {
     } catch (error) {
       console.error(`[GAMES] Ошибка установки игры ${gameTitle}:`, error);
 
-      this.downloading = false;
-      
-      // Сбрасываем прогресс
-      if (progressCallback) {
-        progressCallback(0);
-      }
+      // Сбрасываем данные загрузки при ошибке
+      Games.clearDownloadingData();
       
       throw error;
-    } finally {
-      Games.clearDownloadingData();
     }
   }
 
@@ -924,6 +1028,9 @@ class Games {
       
       // Удаляем JSON файл
       this.deleteGameInfo(gameId, drivePath);
+      
+      // Удаляем локальные изображения
+      await gameImagesManager.deleteGameImages(gameId);
 
       // Удаляем из коллекции (автоматически сохранит изменения)
       GameCollection.removeInstalledGame(gameId);

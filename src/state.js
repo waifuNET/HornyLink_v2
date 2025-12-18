@@ -7,6 +7,21 @@ const { applicationSettingsPath } = require('./cfg');
 
 class AppVariables {
   static driveInfo = null;
+  static isOnline = false;
+  static lastOnlineCheck = 0;
+  static onlineCheckInterval = 30000; // 30 секунд
+  
+  static setOnlineStatus(status) {
+    const wasOnline = this.isOnline;
+    this.isOnline = status;
+    this.lastOnlineCheck = Date.now();
+    
+    if (wasOnline !== status) {
+      console.log(`[AppVariables] Статус интернета изменён: ${status ? 'онлайн' : 'офлайн'}`);
+    }
+    
+    return wasOnline !== status; // Возвращаем true если статус изменился
+  }
 }
 
 class LocalUserBase {
@@ -401,10 +416,15 @@ class GameCollection {
       const existingGame = this.getGameById(serverGame.id);
       
       if (existingGame) {
-        // Обновляем существующую игру
+        // Обновляем существующую игру, сохраняя локальные данные
         this.updateGame(serverGame.id, {
           ...serverGame,
           isInstalled: existingGame.isInstalled,
+          installPath: existingGame.installPath || "",
+          executablePath: existingGame.executablePath || "",
+          // Сохраняем локальные данные, если они есть
+          lastPlayDate: existingGame.lastPlayDate || serverGame.lastPlayDate,
+          playtime: existingGame.playtime || serverGame.playtime,
         });
       } else {
         // Добавляем новую игру
@@ -527,7 +547,11 @@ class ApplicationSettings {
     language: 'ru',
     theme: 'dark',
     content_language: 'default',
-    comments_language: 'default'
+    comments_language: 'default',
+    // Настройки кэширования
+    cache_disk_size: 1024 * 1024 * 1024,  // 1 GB по умолчанию
+    cache_ram_size: 256 * 1024 * 1024,    // 256 MB по умолчанию
+    cache_enabled: true
   };
 
   static settings = { ...this.defaultSettings };
@@ -565,6 +589,35 @@ class ApplicationSettings {
     }
     console.error(`[STATE] ${LanguageVariables.getMessage('SETTINGS_UPDATE_ERROR', 'errors', this.settings.language)}`);
     return false;
+  }
+
+  // Методы для работы с кэшем
+  static getCacheSettings() {
+    return {
+      diskSize: this.settings.cache_disk_size,
+      ramSize: this.settings.cache_ram_size,
+      enabled: this.settings.cache_enabled
+    };
+  }
+
+  static setCacheDiskSize(sizeInBytes) {
+    // Ограничиваем размер от 100MB до 2GB
+    const minSize = 100 * 1024 * 1024;
+    const maxSize = 2 * 1024 * 1024 * 1024;
+    const size = Math.max(minSize, Math.min(maxSize, sizeInBytes));
+    return this.updateSetting('cache_disk_size', size);
+  }
+
+  static setCacheRamSize(sizeInBytes) {
+    // Ограничиваем размер от 64MB до 512MB
+    const minSize = 64 * 1024 * 1024;
+    const maxSize = 512 * 1024 * 1024;
+    const size = Math.max(minSize, Math.min(maxSize, sizeInBytes));
+    return this.updateSetting('cache_ram_size', size);
+  }
+
+  static setCacheEnabled(enabled) {
+    return this.updateSetting('cache_enabled', enabled);
   }
 }
 

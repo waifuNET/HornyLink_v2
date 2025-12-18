@@ -1,10 +1,46 @@
 const { SERVER_URL } = require('../cfg');
-const fetch = (...args) => import('node-fetch').then(({ default: fetch }) => fetch(...args));
 
-// Кэш для изображений
-const imageCache = new Map();
-let cacheSize = 0;
-const MAX_CACHE_SIZE = 512 * 1024 * 1024; // 512 МБ
+// Кэшируем модуль node-fetch при первом импорте
+let nodeFetch = null;
+let nodeFetchResponse = null;
+
+async function getNodeFetch() {
+  if (!nodeFetch) {
+    const module = await import('node-fetch');
+    nodeFetch = module.default;
+    nodeFetchResponse = module.Response;
+  }
+  return nodeFetch;
+}
+
+async function getNodeFetchResponse() {
+  if (!nodeFetchResponse) {
+    const module = await import('node-fetch');
+    nodeFetch = module.default;
+    nodeFetchResponse = module.Response;
+  }
+  return nodeFetchResponse;
+}
+
+// Базовый fetch без кэширования
+const fetch = async (...args) => {
+  const fetchFn = await getNodeFetch();
+  return fetchFn(...args);
+};
+
+// Ленивая загрузка imageCache для избежания циклических зависимостей
+let imageCacheModule = null;
+function getImageCache() {
+  if (!imageCacheModule) {
+    try {
+      imageCacheModule = require('../logic/cache/imageCache');
+    } catch (e) {
+      console.warn('[internetUtils] imageCache module not available');
+      return null;
+    }
+  }
+  return imageCacheModule;
+}
 
 // MIME типы изображений
 const IMAGE_MIME_TYPES = [
@@ -31,19 +67,6 @@ function isImageUrl(url) {
   }
 }
 
-// Удаление старых записей из кэша при превышении лимита
-function evictCache(requiredSize) {
-  const entries = Array.from(imageCache.entries());
-  
-  // Удаляем старые записи пока не освободим место
-  for (const [key, value] of entries) {
-    if (cacheSize + requiredSize <= MAX_CACHE_SIZE) break;
-    
-    cacheSize -= value.size;
-    imageCache.delete(key);
-  }
-}
-
 // Обёртка над fetch с кэшированием изображений
 async function cachedFetch(...args) {
   const [url, options = {}] = args;
@@ -53,60 +76,52 @@ async function cachedFetch(...args) {
   const isGetRequest = !options.method || options.method.toUpperCase() === 'GET';
   const mightBeImage = isImageUrl(urlString);
   
-  // Если это может быть изображение и GET запрос, проверяем кэш
-  if (isGetRequest && mightBeImage && imageCache.has(urlString)) {
-    const cached = imageCache.get(urlString);
-    
-    // Создаём Response из кэшированных данных
-    return new Promise((resolve) => {
-      import('node-fetch').then(({ Response }) => {
-        resolve(new Response(cached.buffer, {
-          status: 200,
-          statusText: 'OK',
-          headers: cached.headers
-        }));
-      });
-    });
+  // Пробуем получить из кэша
+  if (isGetRequest && mightBeImage) {
+    const cache = getImageCache();
+    if (cache && cache._initialized) {
+      try {
+        const cachedBuffer = await cache.get(urlString);
+        if (cachedBuffer) {
+          // Создаём Response из кэшированных данных
+          const Response = await getNodeFetchResponse();
+          return new Response(cachedBuffer, {
+            status: 200,
+            statusText: 'OK (cached)',
+            headers: { 'content-type': 'image/jpeg' }
+          });
+        }
+      } catch (cacheErr) {
+        console.warn('[CACHE] Ошибка чтения из кэша:', cacheErr.message);
+      }
+    }
   }
   
   // Выполняем оригинальный запрос
   const response = await fetch(...args);
   
-  // Если это GET запрос и ответ успешный
+  // Если это GET запрос изображения и ответ успешный - кэшируем
   if (isGetRequest && response.ok) {
     const contentType = response.headers.get('content-type') || '';
     
     // Проверяем, является ли это изображением
     if (IMAGE_MIME_TYPES.some(type => contentType.includes(type))) {
       try {
-        // Клонируем response, чтобы можно было читать body дважды
-        const clonedResponse = response.clone();
-        const buffer = await clonedResponse.buffer();
-        const size = buffer.length;
-        
-        // Проверяем, поместится ли в кэш
-        if (size <= MAX_CACHE_SIZE) {
-          // Освобождаем место если нужно
-          if (cacheSize + size > MAX_CACHE_SIZE) {
-            evictCache(size);
-          }
+        const cache = getImageCache();
+        if (cache && cache._initialized) {
+          // Клонируем response, чтобы можно было читать body дважды
+          const clonedResponse = response.clone();
+          const arrayBuffer = await clonedResponse.arrayBuffer();
+          const buffer = Buffer.from(arrayBuffer);
           
-          // Сохраняем в кэш
-          imageCache.set(urlString, {
-            buffer,
-            size,
-            headers: {
-              'content-type': contentType,
-              'content-length': size.toString()
-            },
-            timestamp: Date.now()
+          // Сохраняем в кэш асинхронно (не блокируем возврат response)
+          cache.set(urlString, buffer, contentType).catch(err => {
+            console.warn('[CACHE] Ошибка сохранения в кэш:', err.message);
           });
-          
-          cacheSize += size;
         }
       } catch (err) {
         // Если не удалось закэшировать, просто продолжаем
-        console.error('[CACHE] Ошибка кэширования:', err.message);
+        console.warn('[CACHE] Ошибка кэширования:', err.message);
       }
     }
   }
@@ -115,19 +130,20 @@ async function cachedFetch(...args) {
 }
 
 // Функция для очистки кэша
-function clearImageCache() {
-  imageCache.clear();
-  cacheSize = 0;
+async function clearImageCache() {
+  const cache = getImageCache();
+  if (cache) {
+    await cache.clear();
+  }
 }
 
 // Функция для получения статистики кэша
 function getCacheStats() {
-  return {
-    entries: imageCache.size,
-    sizeBytes: cacheSize,
-    sizeMB: (cacheSize / (1024 * 1024)).toFixed(2),
-    maxSizeMB: MAX_CACHE_SIZE / (1024 * 1024)
-  };
+  const cache = getImageCache();
+  if (cache && cache._initialized) {
+    return cache.getStats();
+  }
+  return { ram: { entries: 0 }, disk: { entries: 0 } };
 }
 
 async function hasInternetConnection(debug = false, url = SERVER_URL, timeoutMs = 4000) {

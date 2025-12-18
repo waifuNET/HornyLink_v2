@@ -926,3 +926,66 @@
     0%, 100% { transform: translateY(0); }
     50% { transform: translateY(3px); }
 }
+
+/* Офлайн индикатор */
+.offline-indicator {
+    position: fixed;
+    top: 40px;
+    right: 20px;
+    background-color: rgba(255, 87, 87, 0.9);
+    color: white;
+    padding: 8px 16px;
+    border-radius: var(--border-radius);
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 9999;
+    animation: slideIn 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Прогресс бар загрузки */
+.download-progress-container {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-container);
+    border: 1px solid var(--border-primary);
+    border-radius: var(--border-radius);
+    padding: 12px 20px;
+    min-width: 300px;
+    z-index: 9998;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.download-progress-text {
+    font-size: 13px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.download-progress-bar-container {
+    height: 6px;
+    background-color: var(--bg-input);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.download-progress-bar {
+    height: 100%;
+    background-color: var(--accent-primary);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 0%;
+}
