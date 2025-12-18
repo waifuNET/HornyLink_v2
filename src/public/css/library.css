@@ -313,6 +313,24 @@
     font-weight: 600;
     color: var(--text-primary);
 }
+
+/* Цвета ролей пользователей в комментариях */
+.author-name.role-administrator {
+    color: #ff6b6b !important;
+}
+
+.author-name.role-manager {
+    color: #9b59b6 !important;
+}
+
+.author-name.role-moderator {
+    color: #4ecdc4 !important;
+}
+
+.author-name.role-premium {
+    color: #f1c40f !important;
+}
+
 .comment-date {
     font-size: 12px;
     color: var(--text-dim);

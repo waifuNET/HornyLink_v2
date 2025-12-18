@@ -365,12 +365,21 @@ async function loadComments() {
         const isOwnComment = currentUserId && comment.user_id === currentUserId;
         const deleteButton = isOwnComment ? `<div class="comment-action comment-delete" data-comment-id="${comment.id}">🗑️ Удалить</div>` : '';
         
+        // Определяем класс роли (role может быть строкой типа "user" или "manager premium")
+        const roleClass = getUserRoleClass(comment.role);
+        
+        // Используем avatar если есть, иначе дефолтный
+        const avatarUrl = comment.avatar || comment.avatar_url || 'data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23444%22/%3E%3C/svg%3E';
+        
+        // Используем username или author_username
+        const username = comment.username || comment.author_username || 'Аноним';
+        
         return `
             <div class="comment" data-comment-id="${comment.id}">
                 <div class="comment-header">
-                    <img src="${comment.avatar}" alt="Avatar" class="comment-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23444%22/%3E%3C/svg%3E'">
+                    <img src="${avatarUrl}" alt="Avatar" class="comment-avatar" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2240%22 height=%2240%22%3E%3Ccircle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%23444%22/%3E%3C/svg%3E'">
                     <div class="comment-author">
-                        <div class="author-name">${comment.username}</div>
+                        <div class="author-name ${roleClass}">${username}</div>
                         <div class="comment-date">${date}</div>
                     </div>
                 </div>
@@ -1151,5 +1160,27 @@ window.addEventListener('beforeunload', () => {
         clearInterval(downloadWatcherInterval);
     }
 });
+
+// ============ Функция для определения роли пользователя ============
+
+/**
+ * Определяет CSS класс роли пользователя
+ * @param {string} roleString - Строка с ролями через пробел (например: "user", "manager premium", "administrator")
+ * @returns {string} - CSS класс роли или пустая строка
+ */
+function getUserRoleClass(roleString) {
+    if (!roleString || typeof roleString !== 'string') return '';
+    
+    // Приводим к lowercase для корректного сравнения
+    const roles = roleString.toLowerCase();
+    
+    // Иерархия ролей (от высшей к низшей)
+    if (roles.includes('administrator')) return 'role-administrator';
+    if (roles.includes('manager')) return 'role-manager';
+    if (roles.includes('moderator')) return 'role-moderator';
+    if (roles.includes('premium')) return 'role-premium';
+    
+    return '';
+}
 
 init();
