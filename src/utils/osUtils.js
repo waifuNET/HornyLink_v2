@@ -71,11 +71,10 @@ static async getDriveInfo() {
       }
       
       // Если метка не найдена, используем дефолтное значение
-      if (!label || label.trim() === '') {
+      if (!label || label.trim() === '' || !/^[\x20-\x7E\u0400-\u04FF\s.,\-_()]+$/u.test(label)) {
         if (isWindows) {
-          label = 'Локальный диск';
+          label = `Локальный диск (${mount.replace(/[\\/]+$/, '')})`;
         } else {
-          // Для Linux используем имя точки монтирования
           label = mount === '/' ? 'Корневой раздел' : mount.split('/').pop() || 'Раздел';
         }
       }
