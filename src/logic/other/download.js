@@ -788,45 +788,63 @@ async function extractArchive(archivePath, extractPath) {
   updateProgress(70);
   
   return new Promise((resolve, reject) => {
-    try {
-      // Проверяем остановку
-      downloadController.checkStopped();
+    // Используем setImmediate для асинхронной распаковки
+    setImmediate(async () => {
+      try {
+        // Проверяем остановку
+        downloadController.checkStopped();
 
-      const zip = new AdmZip(archivePath);
-      const entries = zip.getEntries();
-      const totalEntries = entries.length;
-      
-      let extractedCount = 0;
-      
-      entries.forEach((entry) => {
-        // Проверяем остановку на каждом файле
-        try {
-          downloadController.checkStopped();
-        } catch (error) {
-          throw new Error('DOWNLOAD_STOPPED');
-        }
-
-        if (!entry.isDirectory) {
-          zip.extractEntryTo(entry, extractPath, true, true);
-        }
-        extractedCount++;
+        const zip = new AdmZip(archivePath);
+        const entries = zip.getEntries();
+        const totalEntries = entries.length;
         
-        // Прогресс распаковки (70-100%)
-        const extractProgress = 70 + (extractedCount / totalEntries) * 30;
-        updateProgress(extractProgress);
-      });
-      
-      console.log(`✓ Распаковка завершена: ${totalEntries} файлов`);
-      updateProgress(100);
-      resolve();
-    } catch (error) {
-      if (error.message === 'DOWNLOAD_STOPPED') {
-        console.log('\n⏹  Распаковка отменена пользователем');
-        reject(error);
-      } else {
-        reject(error);
+        let extractedCount = 0;
+        
+        // Обрабатываем файлы пакетами для предотвращения блокировки UI
+        const BATCH_SIZE = 50; // Обрабатывать по 50 файлов за раз
+        
+        for (let i = 0; i < entries.length; i += BATCH_SIZE) {
+          // Проверяем остановку перед каждым пакетом
+          try {
+            downloadController.checkStopped();
+          } catch (error) {
+            throw new Error('DOWNLOAD_STOPPED');
+          }
+          
+          // Обрабатываем пакет файлов
+          const batch = entries.slice(i, i + BATCH_SIZE);
+          
+          // Используем await для освобождения event loop
+          await new Promise((resolveBatch) => {
+            setImmediate(() => {
+              batch.forEach((entry) => {
+                if (!entry.isDirectory) {
+                  zip.extractEntryTo(entry, extractPath, true, true);
+                }
+                extractedCount++;
+              });
+              
+              // Прогресс распаковки (70-100%)
+              const extractProgress = 70 + (extractedCount / totalEntries) * 30;
+              updateProgress(extractProgress);
+              
+              resolveBatch();
+            });
+          });
+        }
+        
+        console.log(`✓ Распаковка завершена: ${totalEntries} файлов`);
+        updateProgress(100);
+        resolve();
+      } catch (error) {
+        if (error.message === 'DOWNLOAD_STOPPED') {
+          console.log('\n⏹  Распаковка отменена пользователем');
+          reject(error);
+        } else {
+          reject(error);
+        }
       }
-    }
+    });
   });
 }
 
@@ -876,7 +894,6 @@ module.exports = {
   setProgressCallback,
   updateProgress,
   getFileSize,
-  // Новые функции управления загрузкой
   pauseDownload,
   resumeDownload,
   stopDownload,
